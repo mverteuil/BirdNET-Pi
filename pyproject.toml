@@ -7,6 +7,7 @@ dev = [
   {include-group = "profiling"},
   "httpx>=0.28.1",
   "pandas-stubs",
+  "polib>=1.2.0",
   "pyleak>=0.1.14",
   "pytest-asyncio>=0.23.8",
   "pytest-cov>=6.2.1",
@@ -32,7 +33,7 @@ profiling = [
 
 [project]
 name = "birdnet-pi"
-version = "2.0.0a"
+version = "2.0.0a0"
 description = "The next generation of real-time, acoustic bird classification."
 authors = [
   {name = "Matthew de Verteuil", email = "mverteuil@users.noreply.github.com"},

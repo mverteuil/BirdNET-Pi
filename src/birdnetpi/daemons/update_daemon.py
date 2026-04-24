@@ -260,27 +260,27 @@ async def process_region_pack_download(request: dict) -> None:
     """Process a region pack download request.
 
     Args:
-        request: The download request containing region_id, download_url, size_mb.
+        request: The download request containing release_name, download_url, size_mb.
     """
     if not DaemonState.region_pack_service or not DaemonState.cache_service:
         logger.error("Region pack service or cache not initialized")
         return
 
-    region_id = request.get("region_id")
+    release_name = request.get("release_name")
     download_url = request.get("download_url")
     size_mb = request.get("size_mb", 0)
 
-    if not region_id or not download_url:
-        logger.error("Invalid region pack request: missing region_id or download_url")
+    if not release_name or not download_url:
+        logger.error("Invalid region pack request: missing release_name or download_url")
         DaemonState.cache_service.delete("region_pack:download_request")
         return
 
-    logger.info("Processing region pack download: %s (%.1f MB)", region_id, size_mb)
+    logger.info("Processing region pack download: %s (%.1f MB)", release_name, size_mb)
 
     # Store download status for UI
     DaemonState.cache_service.set(
         "region_pack:download_status",
-        {"status": "downloading", "region_id": region_id, "progress": 0},
+        {"status": "downloading", "release_name": release_name, "progress": 0},
         ttl=3600,
     )
 
@@ -295,7 +295,7 @@ async def process_region_pack_download(request: dict) -> None:
                     "region_pack:download_status",
                     {
                         "status": "downloading",
-                        "region_id": region_id,
+                        "release_name": release_name,
                         "progress": progress,
                         "downloaded_mb": round(downloaded_mb, 1),
                         "total_mb": round(total_mb, 1),
@@ -308,7 +308,7 @@ async def process_region_pack_download(request: dict) -> None:
         await loop.run_in_executor(
             None,
             lambda: region_pack_service.download_from_url(
-                region_id=region_id,
+                release_name=release_name,
                 download_url=download_url,
                 size_mb=size_mb,
                 force=True,
@@ -319,16 +319,16 @@ async def process_region_pack_download(request: dict) -> None:
         # Update status to complete
         DaemonState.cache_service.set(
             "region_pack:download_status",
-            {"status": "complete", "region_id": region_id, "progress": 100},
+            {"status": "complete", "release_name": release_name, "progress": 100},
             ttl=300,
         )
-        logger.info("Region pack '%s' downloaded and installed successfully", region_id)
+        logger.info("Region pack '%s' downloaded and installed successfully", release_name)
 
     except Exception as e:
-        logger.error("Failed to download region pack '%s': %s", region_id, e)
+        logger.error("Failed to download region pack '%s': %s", release_name, e)
         DaemonState.cache_service.set(
             "region_pack:download_status",
-            {"status": "error", "region_id": region_id, "error": str(e)},
+            {"status": "error", "release_name": release_name, "error": str(e)},
             ttl=300,
         )
 

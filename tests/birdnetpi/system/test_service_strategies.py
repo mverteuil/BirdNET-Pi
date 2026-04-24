@@ -265,12 +265,6 @@ class TestDockerSupervisordStrategy:
                 ["supervisorctl", "stop", "test_service"],
                 id="stop",
             ),
-            pytest.param(
-                "restart_service",
-                "test_service",
-                ["supervisorctl", "restart", "test_service"],
-                id="restart",
-            ),
         ],
     )
     @patch("subprocess.run", autospec=True)
@@ -282,6 +276,18 @@ class TestDockerSupervisordStrategy:
         method = getattr(strategy, method_name)
         method(service_name)
         mock_run.assert_called_once_with(expected_command, check=True)
+
+    @patch("subprocess.Popen", autospec=True)
+    def test_restart_service_uses_popen(self, mock_popen):
+        """Should use Popen with start_new_session for restart to allow self-restart."""
+        strategy = DockerSupervisordStrategy()
+        strategy.restart_service("test_service")
+        mock_popen.assert_called_once_with(
+            ["supervisorctl", "restart", "test_service"],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     @pytest.mark.parametrize(
         "method_name,expected_log",

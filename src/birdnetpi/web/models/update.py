@@ -82,7 +82,7 @@ class RegionPackDownloadStatusResponse(BaseModel):
     """
 
     status: str  # idle, downloading, complete, error
-    region_id: str | None = None
+    release_name: str | None = None
     progress: int | None = None  # 0-100 percentage
     downloaded_mb: float | None = None
     total_mb: float | None = None

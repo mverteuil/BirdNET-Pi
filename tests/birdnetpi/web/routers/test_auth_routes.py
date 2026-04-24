@@ -12,7 +12,7 @@ from birdnetpi.web.core.factory import create_app
 
 
 @pytest.fixture
-async def client_with_admin(app_with_temp_data):
+def client_with_admin(app_with_temp_data):
     """Create a test client with admin authentication mocked.
 
     This fixture mocks the auth_service to report that an admin user exists,
@@ -78,3 +78,48 @@ class TestSQLAdminRedirects:
         assert ("/admin/database/login", {"GET"}) in routes
         assert ("/admin/database/login", {"POST"}) in routes
         assert ("/admin/database/logout", {"GET"}) in routes
+
+
+class TestSetupRoutes:
+    """Test admin setup routes."""
+
+    def test_setup_redirects_when_admin_exists(self, client_with_admin):
+        """Should redirect to home when admin already exists."""
+        response = client_with_admin.get("/admin/setup", follow_redirects=False)
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/"
+
+
+class TestLoginRoutes:
+    """Test admin login routes.
+
+    Note: Tests that require full template rendering are covered in integration tests.
+    These unit tests focus on redirect behavior and API responses.
+    """
+
+    pass  # Login route tests require template rendering - see integration tests
+
+
+class TestLogoutRoute:
+    """Test admin logout route."""
+
+    def test_logout_redirects_to_login(self, client_with_admin):
+        """Should redirect to login page after logout."""
+        response = client_with_admin.get("/admin/logout", follow_redirects=False)
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/admin/login"
+
+
+class TestAuthStatusAPI:
+    """Test authentication status API endpoint."""
+
+    def test_auth_status_unauthenticated(self, client_with_admin):
+        """Should return unauthenticated status when not logged in."""
+        response = client_with_admin.get("/api/auth/status")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["authenticated"] is False
+        assert data["username"] is None

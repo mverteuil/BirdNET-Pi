@@ -182,8 +182,22 @@ class PresentationManager:
 
     def _format_detection_log(self, detections: Sequence[DetectionBase]) -> list[DetectionLogEntry]:
         """Format recent detections for display."""
+        import pytz
+
+        # Get user's timezone for display
+        user_tz = pytz.timezone(self.config.timezone) if self.config.timezone != "UTC" else UTC
+
         entries = []
         for d in detections:
+            # Convert UTC timestamp to user's timezone
+            # Handle both naive (assume UTC) and aware timestamps
+            if d.timestamp:
+                ts = d.timestamp if d.timestamp.tzinfo else d.timestamp.replace(tzinfo=UTC)
+                local_time = ts.astimezone(user_tz)
+            else:
+                local_time = None
+            time_str = local_time.strftime("%H:%M") if local_time else "--:--"
+
             # Use model_dump with config context if it's DetectionWithTaxa
             if hasattr(d, "model_dump"):
                 data = d.model_dump(
@@ -193,7 +207,7 @@ class PresentationManager:
                 )
                 entries.append(
                     DetectionLogEntry(
-                        time=d.timestamp.strftime("%H:%M"),
+                        time=time_str,
                         common_name=data.get("common_name")
                         or data.get("scientific_name", "Unknown"),
                         confidence=f"{d.confidence:.0%}",
@@ -203,7 +217,7 @@ class PresentationManager:
                 # Fallback for plain Detection objects
                 entries.append(
                     DetectionLogEntry(
-                        time=d.timestamp.strftime("%H:%M"),
+                        time=time_str,
                         common_name=d.common_name or d.scientific_name,
                         confidence=f"{d.confidence:.0%}",
                     )

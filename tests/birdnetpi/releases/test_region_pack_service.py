@@ -153,12 +153,12 @@ class TestRegionPackService:
         """Should raise FileExistsError when pack exists and force is False."""
         service = RegionPackService(path_resolver)
 
-        # Create existing file
-        install_path = service.get_install_path("existing-pack-001")
+        pack = make_region_pack_info(region_id="existing-pack-001", total_size_mb=10.0)
+
+        # Create existing file using the release_name (which is used for install path)
+        install_path = service.get_install_path(pack.release_name)
         install_path.parent.mkdir(parents=True, exist_ok=True)
         install_path.touch()
-
-        pack = make_region_pack_info(region_id="existing-pack-001", total_size_mb=10.0)
 
         with pytest.raises(FileExistsError, match="already installed"):
             service.download_and_install(pack)
@@ -179,7 +179,7 @@ class TestRegionPackService:
             return_value=mock_response,
         ):
             result = service.download_from_url(
-                region_id="download-test-001",
+                release_name="download-test-001",
                 download_url="https://example.com/pack.db.gz",
                 size_mb=1.0,
             )
@@ -211,7 +211,7 @@ class TestRegionPackService:
             return_value=mock_response,
         ):
             service.download_from_url(
-                region_id="progress-test-001",
+                release_name="progress-test-001",
                 download_url="https://example.com/pack.db.gz",
                 progress_callback=track_progress,
             )
@@ -234,7 +234,7 @@ class TestRegionPackService:
             pytest.raises(Exception, match="Network error"),
         ):
             service.download_from_url(
-                region_id="cleanup-test-001",
+                release_name="cleanup-test-001",
                 download_url="https://example.com/pack.db.gz",
             )
 
@@ -256,7 +256,7 @@ class TestRegionPackService:
             result = service.download_and_install(pack, force=True)
 
             mock_download.assert_called_once_with(
-                region_id="delegate-test-001",
+                release_name="delegate-test-001-v1",
                 download_url="https://example.com/pack.db.gz",
                 size_mb=15.5,
                 force=True,
@@ -285,7 +285,7 @@ class TestRegionPackService:
             return_value=mock_response,
         ):
             result = service.download_from_url(
-                region_id="force-test-001",
+                release_name="force-test-001",
                 download_url="https://example.com/pack.db.gz",
                 force=True,
             )

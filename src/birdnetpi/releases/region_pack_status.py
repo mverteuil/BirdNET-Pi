@@ -64,9 +64,9 @@ class RegionPackStatusService:
             try:
                 region_info = self.registry_service.find_pack_for_coordinates(lat, lon)
                 if region_info:
-                    recommended_pack = region_info.region_id
+                    recommended_pack = region_info.release_name
                     # Check if we have the correct pack locally
-                    recommended_file = f"{region_info.region_id}.db"
+                    recommended_file = f"{region_info.release_name}.db"
                     correct_pack_installed = any(
                         p.name == recommended_file for p in available_packs
                     )
