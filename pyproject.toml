@@ -77,7 +77,7 @@ dependencies = [
   "redis[hiredis]>=5.0.0",
   "resampy",
   "seaborn",
-  "sounddevice>=0.5.2",
+  "sounddevice>=0.5.5",
   "sqladmin>=0.21.0",
   "sqlalchemy",
   "sqlmodel>=0.0.24",
