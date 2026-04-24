@@ -256,7 +256,7 @@ wheels = [
 
 [[package]]
 name = "birdnet-pi"
-version = "2.0.0a0"
+version = "2.0.0a1"
 source = { editable = "." }
 dependencies = [
     { name = "ai-edge-litert" },
