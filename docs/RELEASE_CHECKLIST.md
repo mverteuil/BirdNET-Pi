@@ -19,32 +19,46 @@ gh issue list --label "critical"
 
 ## Version Updates
 
-Update version numbers in the following files:
+The package version lives in a single place:
 
 | File | Location | Example |
 |------|----------|---------|
-| `pyproject.toml` | Line ~35 | `version = "X.Y.Z"` |
-| `src/birdnetpi/config/versions/vX_Y_Z.py` | Line ~22 | `version = "X.Y.Z"` |
-| `src/birdnetpi/cli/manage_translations.py` | Line ~74 | `--version=X.Y.Z` |
+| `pyproject.toml` | Line ~36 | `version = "X.Y.Z"` |
 
-> **Note:** The config version is defined in version handler files (e.g., `v2_0_0.py`). When creating a new schema version, create a new version handler file.
+`src/birdnetpi/__init__.py` reads `__version__` from installed metadata, and
+`src/birdnetpi/cli/manage_translations.py` reads `birdnetpi.__version__` dynamically —
+neither needs a manual edit.
+
+After bumping `pyproject.toml`, refresh the lockfile:
+
+```bash
+uv lock
+```
+
+> **Config schema vs package version:** `src/birdnetpi/config/versions/vX_Y_Z.py`
+> holds the config *schema* version (e.g. `2.0.0`). Only create a new handler when
+> introducing a breaking schema change. Alpha/beta/patch bumps of the package do
+> **not** touch this file.
 
 ## Translations
 
-Run the translation workflow to ensure all strings are extracted and compiled:
+**Must run after the version bump.** `pybabel extract` writes the current
+`pyproject.toml` version into the POT `Project-Id-Version` header, and CI's
+`manage-translations check` fails the build if that header doesn't match the
+package version. Running this section before the bump leaves the POT stale.
 
 ```bash
-# Extract translatable strings from source
+# Extract translatable strings (picks up the new version)
 uv run manage-translations extract
 
 # Update PO files with new strings
 uv run manage-translations update
 
-# Verify all locales are complete
-uv run manage-translations check
-
 # Compile PO files to MO
 uv run manage-translations compile
+
+# Verify everything matches
+uv run manage-translations check
 ```
 
 ### Expected Output
@@ -79,9 +93,10 @@ docker compose down
 
 ### Commit Changes
 ```bash
-# Stage all release-related changes
-git add pyproject.toml src/birdnetpi/config/versions/ src/birdnetpi/cli/manage_translations.py
-git add locales/
+# Stage the version bump and any schema-handler or translation updates
+git add pyproject.toml uv.lock locales/
+# Only if a new config schema was introduced:
+#   git add src/birdnetpi/config/versions/
 
 # Create release commit
 git commit -m "release: vX.Y.Z"
