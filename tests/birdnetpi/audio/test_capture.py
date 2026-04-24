@@ -38,9 +38,15 @@ def test_start_capture_initializes_stream(mock_input_stream, audio_service):
     # No device discovery needed - we always use the target sample rate
     audio_service.start_capture()
 
-    # Should use BirdNET's required sample rate (48000) regardless of device native rate
+    # Should use BirdNET's required sample rate (48000) regardless of device native rate.
+    # device_index of -1 (default) is normalized to None for sounddevice compatibility.
+    expected_device = (
+        None
+        if audio_service.config.audio_device_index == -1
+        else audio_service.config.audio_device_index
+    )
     mock_input_stream.assert_called_once_with(
-        device=audio_service.config.audio_device_index,
+        device=expected_device,
         samplerate=48000,  # BirdNET's required rate
         channels=audio_service.config.audio_channels,
         callback=audio_service._callback,
@@ -240,9 +246,9 @@ def test_start_capture_with_default_device(mock_input_stream, audio_service_defa
     """Should use default device when device_index is -1."""
     audio_service_default_device.start_capture()
 
-    # Should use BirdNET's required sample rate
+    # device_index -1 is normalized to None — sounddevice expects None for default device
     mock_input_stream.assert_called_once_with(
-        device=-1,
+        device=None,
         samplerate=48000,
         channels=audio_service_default_device.config.audio_channels,
         callback=audio_service_default_device._callback,
