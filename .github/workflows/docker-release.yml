@@ -34,15 +34,38 @@ jobs:
 
       - name: Extract version from tag
         id: version
+        # GITHUB_REF_NAME and GITHUB_REPOSITORY come from the runner env (not
+        # from attacker-controlled event payloads), so direct shell use is safe.
         run: |
-          # Remove 'v' prefix from tag (v2.0.0 -> 2.0.0)
+          # Remove 'v' prefix from tag (v2.0.0 -> 2.0.0, v2.0.0a1 -> 2.0.0a1)
           VERSION="${GITHUB_REF_NAME#v}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Version: ${VERSION}"
+
+          # Strip PEP 440 / SemVer prerelease suffix to get the base MAJOR.MINOR.PATCH.
+          # Matches: 2.0.0a1, 2.0.0b2, 2.0.0rc1, 2.0.0-alpha.1, 2.0.0.dev3, etc.
+          BASE="$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+).*$/\1/')"
+          MAJOR="$(echo "$BASE" | cut -d. -f1)"
+          MAJOR_MINOR="$(echo "$BASE" | cut -d. -f1-2)"
+
+          # Prerelease = anything present after the base version
+          if [ "$VERSION" = "$BASE" ]; then
+            IS_PRERELEASE=false
+          else
+            IS_PRERELEASE=true
+          fi
 
           # Docker tags must be lowercase; github.repository preserves case
           IMAGE_LC="${GITHUB_REPOSITORY,,}"
-          echo "image_name=${IMAGE_LC}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "version=${VERSION}"
+            echo "base=${BASE}"
+            echo "major=${MAJOR}"
+            echo "major_minor=${MAJOR_MINOR}"
+            echo "is_prerelease=${IS_PRERELEASE}"
+            echo "image_name=${IMAGE_LC}"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Version: ${VERSION} (base=${BASE}, prerelease=${IS_PRERELEASE})"
           echo "Image: ${IMAGE_LC}"
 
       - name: Extract metadata for Docker
@@ -50,15 +73,18 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Use raw tags driven by the shell-parsed version so PEP 440 prereleases
+          # (e.g. 2.0.0a1) produce the same tags that strict SemVer would. The
+          # built-in type=semver patterns reject PEP 440 and would silently emit
+          # no tags for alpha/beta/rc releases.
           tags: |
-            # Version tag (e.g., 2.0.0)
-            type=semver,pattern={{version}}
-            # Major.minor tag (e.g., 2.0)
-            type=semver,pattern={{major}}.{{minor}}
-            # Major tag (e.g., 2)
-            type=semver,pattern={{major}}
-            # Latest tag (only for non-prerelease versions)
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+            # Full version tag — always (e.g. 2.0.0 or 2.0.0a1)
+            type=raw,value=${{ steps.version.outputs.version }}
+            # Moving tags only for stable releases, so alphas don't clobber
+            # what :2.0 and :2 point at.
+            type=raw,value=${{ steps.version.outputs.major_minor }},enable=${{ steps.version.outputs.is_prerelease == 'false' }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.is_prerelease == 'false' }}
+            type=raw,value=latest,enable=${{ steps.version.outputs.is_prerelease == 'false' }}
 
       - name: Build and push runtime image
         uses: docker/build-push-action@v5
@@ -75,6 +101,18 @@ jobs:
           build-args: |
             BIRDNET_ASSETS_VERSION=latest
 
+      - name: Extract metadata for init image
+        id: meta_init
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: suffix=-init,onlatest=true
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=${{ steps.version.outputs.major_minor }},enable=${{ steps.version.outputs.is_prerelease == 'false' }}
+            type=raw,value=${{ steps.version.outputs.major }},enable=${{ steps.version.outputs.is_prerelease == 'false' }}
+            type=raw,value=latest,enable=${{ steps.version.outputs.is_prerelease == 'false' }}
+
       - name: Build and push init image
         uses: docker/build-push-action@v5
         with:
@@ -82,9 +120,7 @@ jobs:
           file: ./Dockerfile
           target: init
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:${{ steps.version.outputs.version }}-init
-            ${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:latest-init
+          tags: ${{ steps.meta_init.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
@@ -104,8 +140,7 @@ jobs:
             echo ""
             echo "### Init Image"
             echo '```'
-            echo "${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:${{ steps.version.outputs.version }}-init"
-            echo "${{ env.REGISTRY }}/${{ steps.version.outputs.image_name }}:latest-init"
+            echo "${{ steps.meta_init.outputs.tags }}"
             echo '```'
             echo ""
             echo "### Pull Commands"
