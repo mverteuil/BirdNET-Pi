@@ -63,6 +63,22 @@ class ServiceRegistry:
 _log_lock = threading.Lock()
 
 
+def _clean_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    """Build a subprocess env without inherited bash function exports.
+
+    install.sh exports a `sudo` bash function when running as root; bash
+    serializes it into the environment as ``BASH_FUNC_sudo%%=() { ... }``.
+    When sudo drops to a login shell for the target user, that entry is
+    re-parsed and the function body is executed as a command, failing with
+    ``BASH_FUNC_sudo%%=...: command not found``. Stripping these entries
+    prevents the leak into children.
+    """
+    env = {k: v for k, v in os.environ.items() if not k.startswith("BASH_FUNC_")}
+    if extra:
+        env.update(extra)
+    return env
+
+
 def log(status: str, message: str) -> None:
     """Thread-safe logging with timestamp.
 
@@ -278,7 +294,7 @@ def install_assets() -> None:
             "latest",
             "--skip-existing",
         ],
-        env={**os.environ, "BIRDNETPI_DATA": "/var/lib/birdnetpi"},
+        env=_clean_env({"BIRDNETPI_DATA": "/var/lib/birdnetpi"}),
         check=False,
         capture_output=True,
         text=True,
@@ -831,7 +847,7 @@ def main() -> None:
             setup_cmd.append("--non-interactive")
         result = subprocess.run(
             setup_cmd,
-            env={**os.environ, **setup_env},
+            env=_clean_env(setup_env),
             check=False,
             stdin=sys.stdin if sys.stdin.isatty() else subprocess.DEVNULL,
             capture_output=False,
