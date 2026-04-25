@@ -783,11 +783,14 @@ class SystemConfigScreen(ModalScreen[dict | None]):
                     value=self.initial_config.get("username", "birdnet"),
                 )
 
-            # Password - pre-fill from config
+            # Password - pre-fill from config (key matches flash_sdcard.py consumption).
+            # Falls back to "password" so profiles saved by older TUI versions still load.
             yield Input(
                 placeholder="Password",
                 id="password",
-                value=self.initial_config.get("password", ""),
+                value=self.initial_config.get(
+                    "admin_password", self.initial_config.get("password", "")
+                ),
                 password=True,
                 validators=[PasswordValidator()],
             )
@@ -814,7 +817,7 @@ class SystemConfigScreen(ModalScreen[dict | None]):
 
         result: dict[str, Any] = {
             "hostname": hostname_input.value,
-            "password": password_input.value,
+            "admin_password": password_input.value,
         }
 
         # Add username for non-DietPi
