@@ -115,8 +115,16 @@ else
         fi
     fi
 
-    # DietPi/Armbian on Orange Pi: /boot/armbianEnv.txt or /boot/dietpiEnv.txt
-    for ARMBIAN_CONFIG in "/boot/armbianEnv.txt" "/boot/dietpiEnv.txt"; do
+    # DietPi/Armbian on Orange Pi: armbianEnv.txt / dietpiEnv.txt /
+    # orangepiEnv.txt, in either /boot or /boot/firmware (Trixie images
+    # vary by board/version).
+    for ARMBIAN_CONFIG in \
+        "/boot/armbianEnv.txt" \
+        "/boot/firmware/armbianEnv.txt" \
+        "/boot/dietpiEnv.txt" \
+        "/boot/firmware/dietpiEnv.txt" \
+        "/boot/orangepiEnv.txt" \
+        "/boot/firmware/orangepiEnv.txt"; do
         if [ -f "$ARMBIAN_CONFIG" ]; then
             echo "Detected Armbian/DietPi, checking $ARMBIAN_CONFIG..."
 
