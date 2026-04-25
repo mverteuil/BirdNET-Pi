@@ -282,17 +282,90 @@ def create_directories() -> None:
         )
 
 
+def _read_device_tree_model() -> str:
+    """Return /proc/device-tree/model contents, empty string on any failure."""
+    try:
+        return Path("/proc/device-tree/model").read_text().strip("\x00").strip()
+    except OSError:
+        return ""
+
+
+def install_opi5pro_brcmfmac_firmware() -> None:
+    """Install board-specific brcmfmac firmware for the Orange Pi 5 Pro.
+
+    DietPi's stock image ships only generic ``brcmfmac43456-sdio.{bin,txt}``
+    for the AP6256 (BCM4345/9) WiFi+BT combo on the OPi 5 Pro. The kernel
+    looks for the board-specific NVRAM/firmware at
+    ``brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.{bin,txt}`` first,
+    falls back to generic when missing. Generic NVRAM lacks calibration
+    data the chip needs to recover cleanly on warm reboot, leaving the
+    radio in a stuck half-initialized state until full power-off.
+
+    Pull the board-specific blobs from Joshua-Riek/firmware (the de-facto
+    source for OPi 5 Pro Linux firmware) and drop them at the expected
+    path. No-op on other devices.
+    """
+    model = _read_device_tree_model().lower()
+    if "orange pi 5 pro" not in model and "orangepi 5 pro" not in model:
+        return
+
+    base = "https://raw.githubusercontent.com/Joshua-Riek/firmware/main/brcm/"
+    target_dir = "/lib/firmware/brcm"
+    files = [
+        "brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.bin",
+        "brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.txt",
+    ]
+    for fname in files:
+        target = f"{target_dir}/{fname}"
+        if Path(target).exists():
+            continue
+        # urllib.request handles HTTPS; works in the install venv without curl
+        from urllib.request import urlopen
+
+        with urlopen(base + fname, timeout=60) as response:
+            data = response.read()
+        tmp = Path("/tmp") / fname.replace("/", "_")
+        tmp.write_bytes(data)
+        subprocess.run(
+            ["sudo", "cp", str(tmp), target],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "chown", "root:root", target],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["sudo", "chmod", "0664", target],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        tmp.unlink(missing_ok=True)
+
+
 def install_brcmfmac_reset_service() -> None:
-    """Install a oneshot service that resets brcmfmac before networking starts.
+    """Install a oneshot service that hard-resets brcmfmac before networking.
 
-    The Ampak AP6275P (BCM4375) module on the Orange Pi 5 Pro frequently fails
-    to (re)initialize on warm reboot — driver loads, but firmware probe / SDIO
-    handshake fails, so wlan0 never appears and ifupdown's wpa_supplicant call
-    errors out. The standard Armbian/DietPi workaround is to unload and reload
-    the module early at boot, which forces a clean re-init.
+    The AP6256 (BCM4345/9) module on the Orange Pi 5 Pro fails to
+    re-initialize on warm reboot — driver loads, SDIO probe falls back to
+    generic firmware, but the chip is in a half-stuck state from the
+    previous boot and never associates. Even unloading/reloading the kernel
+    module isn't enough; the WiFi/BT power rail has to be cycled via the
+    Rockchip rfkill driver (gpio-controlled).
 
-    This is a no-op on systems that don't have brcmfmac (it does an unloaded
-    rmmod and a load that's a no-op if already loaded).
+    Sequence per boot:
+      1. rmmod brcmfmac brcmutil
+      2. rfkill block wifi (drops the WLAN power GPIO)
+      3. brief wait
+      4. rfkill unblock wifi (re-asserts WLAN power)
+      5. modprobe brcmfmac (re-binds with a freshly-powered chip)
     """
     # Only relevant on DietPi (which uses ifupdown). On other distros we'd
     # need different sequencing.
@@ -301,7 +374,7 @@ def install_brcmfmac_reset_service() -> None:
 
     unit_path = "/etc/systemd/system/birdnetpi-brcmfmac-reset.service"
     unit_body = """[Unit]
-Description=Reset brcmfmac before networking (BCM4375 warm-reboot workaround)
+Description=Reset brcmfmac and power-cycle WiFi chip (warm-reboot workaround)
 DefaultDependencies=no
 Before=networking.service network-pre.target
 After=systemd-modules-load.service
@@ -310,8 +383,12 @@ ConditionPathExists=/sys/module/brcmfmac
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/sbin/rmmod brcmfmac
+ExecStart=-/sbin/rmmod brcmfmac
 ExecStart=-/sbin/rmmod brcmutil
+ExecStart=-/usr/sbin/rfkill block wifi
+ExecStart=/bin/sleep 1
+ExecStart=-/usr/sbin/rfkill unblock wifi
+ExecStart=/bin/sleep 1
 ExecStart=/sbin/modprobe brcmfmac
 
 [Install]
@@ -877,7 +954,11 @@ def main() -> None:
                 ("Configuring Caddy web server", configure_caddy),
                 ("Installing systemd services", install_systemd_services),
                 (
-                    "Installing brcmfmac reset workaround (DietPi WiFi warm-reboot fix)",
+                    "Installing OPi 5 Pro WiFi firmware (board-specific NVRAM)",
+                    install_opi5pro_brcmfmac_firmware,
+                ),
+                (
+                    "Installing brcmfmac reset workaround (warm-reboot fix)",
                     install_brcmfmac_reset_service,
                 ),
                 (
