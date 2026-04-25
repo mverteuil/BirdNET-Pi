@@ -1624,7 +1624,13 @@ def configure_dietpi_boot(  # noqa: C901
             "AUTO_SETUP_LOCALE": "en_US.UTF-8",
             "AUTO_SETUP_KEYBOARD_LAYOUT": "us",  # Set keyboard layout
             "AUTO_SETUP_SSH_SERVER_INDEX": "-2",  # Enable OpenSSH (more reliable)
-            "CONFIG_BOOT_WAIT_FOR_NETWORK": "2",  # Wait for network (required)
+            # 1 = wait for network *up* (any interface), 2 = wait for *online*
+            # (network-online.target). We use 1 to avoid deadlocking boot when
+            # WiFi fails to re-associate on a warm reboot — the device should
+            # still come up, services retry on their own. The first-boot
+            # AUTO_SETUP_BOOT_WAIT_FOR_NETWORK=1 (DietPi's first-run flag)
+            # already gates the asset download, so we don't need 2 here.
+            "CONFIG_BOOT_WAIT_FOR_NETWORK": "1",
         }
 
         # Enable WiFi if configured
