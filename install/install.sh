@@ -195,7 +195,10 @@ fi
 echo "Installing prerequisites..."
 sudo apt-get update
 # Minimal build dependencies (no perl, make, or other build-essential bloat)
-sudo apt-get install -y git python3.11 python3.11-venv python3-pip gcc libc6-dev python3.11-dev libportaudio2 libsndfile1
+# Don't apt-install python3.11 directly — it's only available on Bookworm
+# (DietPi) and not on Trixie (Armbian). uv will provision the right Python
+# from pyproject.toml's `requires-python = "==3.11.*"` at venv-create time.
+sudo apt-get install -y git python3-pip gcc libc6-dev libportaudio2 libsndfile1
 
 # Wait for DNS to settle after apt operations
 sleep 2
