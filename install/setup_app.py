@@ -268,6 +268,19 @@ def create_directories() -> None:
         stderr=subprocess.DEVNULL,
     )
 
+    # If running on DietPi, disable dietpi-ramlog so /var/log isn't shadowed
+    # by tmpfs. Without this, the /var/log/journal directory we just created
+    # becomes invisible at boot and journald reverts to volatile storage —
+    # which means a hung boot leaves no logs behind.
+    if Path("/etc/systemd/system/dietpi-ramlog.service").exists():
+        subprocess.run(
+            ["sudo", "systemctl", "disable", "--now", "dietpi-ramlog.service"],
+            check=False,  # already-disabled is fine
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
 
 def has_waveshare_epaper_hat() -> bool:
     """Detect if a Waveshare e-paper HAT is connected.
