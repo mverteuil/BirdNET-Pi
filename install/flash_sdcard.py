@@ -1722,9 +1722,15 @@ def configure_dietpi_boot(  # noqa: C901
         if config.get("enable_wifi"):
             dietpi_wifi_path = boot_mount / "dietpi-wifi.txt"
             if dietpi_wifi_path.exists():
+                # aWIFI_KEYMGR is required for the wpa_supplicant.conf DietPi
+                # generates on first boot. Omitting it can produce a config
+                # that associates on first boot via fallbacks and then fails
+                # on warm reboot.
+                wifi_keymgr = config.get("wifi_auth", "WPA-PSK")
                 wifi_content = f"""# WiFi settings
 aWIFI_SSID[0]='{config["wifi_ssid"]}'
 aWIFI_KEY[0]='{config["wifi_password"]}'
+aWIFI_KEYMGR[0]='{wifi_keymgr}'
 """
                 temp_wifi = Path("/tmp/dietpi-wifi.txt")
                 temp_wifi.write_text(wifi_content)

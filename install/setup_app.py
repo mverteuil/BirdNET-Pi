@@ -223,10 +223,15 @@ def create_directories() -> None:
     """Create required data directories.
 
     Note: /opt/birdnetpi and birdnetpi user are created by install.sh before cloning.
+
+    Also enables persistent journald (Storage=persistent) by creating
+    /var/log/journal so post-mortem diagnosis after a hard power-cycle is
+    possible. DietPi defaults to log2ram which loses logs on hard reboot.
     """
     # Create data directories
     dirs_to_create = [
         "/var/log/birdnetpi",
+        "/var/log/journal",  # journald flips to persistent mode when this exists
         "/var/lib/birdnetpi/config",
         "/var/lib/birdnetpi/models",
         "/var/lib/birdnetpi/recordings",
