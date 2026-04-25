@@ -282,6 +282,59 @@ def create_directories() -> None:
         )
 
 
+def install_brcmfmac_reset_service() -> None:
+    """Install a oneshot service that resets brcmfmac before networking starts.
+
+    The Ampak AP6275P (BCM4375) module on the Orange Pi 5 Pro frequently fails
+    to (re)initialize on warm reboot — driver loads, but firmware probe / SDIO
+    handshake fails, so wlan0 never appears and ifupdown's wpa_supplicant call
+    errors out. The standard Armbian/DietPi workaround is to unload and reload
+    the module early at boot, which forces a clean re-init.
+
+    This is a no-op on systems that don't have brcmfmac (it does an unloaded
+    rmmod and a load that's a no-op if already loaded).
+    """
+    # Only relevant on DietPi (which uses ifupdown). On other distros we'd
+    # need different sequencing.
+    if not Path("/etc/systemd/system/dietpi-ramlog.service").exists():
+        return
+
+    unit_path = "/etc/systemd/system/birdnetpi-brcmfmac-reset.service"
+    unit_body = """[Unit]
+Description=Reset brcmfmac before networking (BCM4375 warm-reboot workaround)
+DefaultDependencies=no
+Before=networking.service network-pre.target
+After=systemd-modules-load.service
+ConditionPathExists=/sys/module/brcmfmac
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/rmmod brcmfmac
+ExecStart=-/sbin/rmmod brcmutil
+ExecStart=/sbin/modprobe brcmfmac
+
+[Install]
+WantedBy=sysinit.target
+"""
+    temp_unit = Path("/tmp/birdnetpi-brcmfmac-reset.service")
+    temp_unit.write_text(unit_body)
+    subprocess.run(
+        ["sudo", "mv", str(temp_unit), unit_path],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "systemctl", "enable", "birdnetpi-brcmfmac-reset.service"],
+        check=False,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def has_waveshare_epaper_hat() -> bool:
     """Detect if a Waveshare e-paper HAT is connected.
 
@@ -823,6 +876,10 @@ def main() -> None:
                 ("Configuring Redis cache server", configure_redis),
                 ("Configuring Caddy web server", configure_caddy),
                 ("Installing systemd services", install_systemd_services),
+                (
+                    "Installing brcmfmac reset workaround (DietPi WiFi warm-reboot fix)",
+                    install_brcmfmac_reset_service,
+                ),
                 (
                     "Downloading BirdNET assets (may take 1-10 minutes depending on connection)",
                     install_assets,
