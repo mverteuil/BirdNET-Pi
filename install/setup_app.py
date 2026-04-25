@@ -291,63 +291,44 @@ def _read_device_tree_model() -> str:
 
 
 def install_opi5pro_brcmfmac_firmware() -> None:
-    """Install board-specific brcmfmac firmware for the Orange Pi 5 Pro.
+    """Symlink the OPi 5 Pro board-specific brcmfmac path to the generic blob.
 
-    DietPi's stock image ships only generic ``brcmfmac43456-sdio.{bin,txt}``
-    for the AP6256 (BCM4345/9) WiFi+BT combo on the OPi 5 Pro. The kernel
-    looks for the board-specific NVRAM/firmware at
-    ``brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.{bin,txt}`` first,
-    falls back to generic when missing. Generic NVRAM lacks calibration
-    data the chip needs to recover cleanly on warm reboot, leaving the
-    radio in a stuck half-initialized state until full power-off.
+    The kernel looks for ``brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.{bin,txt}``
+    first and falls back to the generic ``brcmfmac43456-sdio.{bin,txt}`` when
+    missing. Joshua-Riek/firmware ships the board-name files as git symlinks
+    pointing at the generic blobs (the firmware content is identical), so
+    creating the same symlinks locally is sufficient to silence the
+    ``Direct firmware load ... failed with error -2`` warning and remove
+    that as a confounding variable.
 
-    Pull the board-specific blobs from Joshua-Riek/firmware (the de-facto
-    source for OPi 5 Pro Linux firmware) and drop them at the expected
-    path. No-op on other devices.
+    The actual warm-reboot recovery is handled by
+    ``install_brcmfmac_reset_service`` (rfkill power-cycle of the WLAN
+    GPIO). This function is purely cosmetic in dmesg terms.
+
+    No-op on devices that aren't an OPi 5 Pro.
     """
     model = _read_device_tree_model().lower()
     if "orange pi 5 pro" not in model and "orangepi 5 pro" not in model:
         return
 
-    base = "https://raw.githubusercontent.com/Joshua-Riek/firmware/main/brcm/"
-    target_dir = "/lib/firmware/brcm"
-    files = [
-        "brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.bin",
-        "brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.txt",
+    target_dir = Path("/lib/firmware/brcm")
+    pairs = [
+        ("brcmfmac43456-sdio.bin", "brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.bin"),
+        ("brcmfmac43456-sdio.txt", "brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.txt"),
     ]
-    for fname in files:
-        target = f"{target_dir}/{fname}"
-        if Path(target).exists():
+    for source, link_name in pairs:
+        if not (target_dir / source).exists():
             continue
-        # urllib.request handles HTTPS; works in the install venv without curl
-        from urllib.request import urlopen
-
-        with urlopen(base + fname, timeout=60) as response:
-            data = response.read()
-        tmp = Path("/tmp") / fname.replace("/", "_")
-        tmp.write_bytes(data)
+        link_target = target_dir / link_name
+        if link_target.exists() or link_target.is_symlink():
+            continue
         subprocess.run(
-            ["sudo", "cp", str(tmp), target],
-            check=True,
+            ["sudo", "ln", "-s", source, str(link_target)],
+            check=False,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        subprocess.run(
-            ["sudo", "chown", "root:root", target],
-            check=True,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        subprocess.run(
-            ["sudo", "chmod", "0664", target],
-            check=True,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        tmp.unlink(missing_ok=True)
 
 
 def install_brcmfmac_reset_service() -> None:
