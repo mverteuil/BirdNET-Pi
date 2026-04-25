@@ -267,7 +267,10 @@ def copy_installer_script(
     temp_install.write_text(install_content)
 
     install_dest = boot_mount / "install.sh"
-    subprocess.run(["sudo", "cp", str(temp_install), str(install_dest)], check=True)
+    # cp -X skips macOS extended attributes; without it, copying onto an
+    # anylinuxfs NFS mount (which doesn't support xattrs) fails with
+    # "could not copy extended attributes: Operation not permitted".
+    subprocess.run(["sudo", "cp", "-X", str(temp_install), str(install_dest)], check=True)
     subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
 
     # For OSes that need preservation (DietPi), create wrapper script
