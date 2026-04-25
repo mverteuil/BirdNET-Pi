@@ -126,12 +126,16 @@ def get_boot_config() -> dict[str, str]:
     """
     import json
 
-    # Check multiple possible config file locations
+    # Check multiple possible config file locations. Order matters: prefer
+    # paths the birdnetpi user can read without needing root traversal.
+    # /root is mode 700, so listing it before world-readable boot paths just
+    # generates noise (and on some Python builds, exposes Path.exists() to
+    # PermissionError on systems where /root denies even traversal).
     config_locations = [
-        Path("/opt/birdnetpi/birdnetpi_config.json"),  # Primary location
-        Path("/root/birdnetpi_config.json"),  # Fallback (root-only)
+        Path("/opt/birdnetpi/birdnetpi_config.json"),  # Copied here by install.sh
         Path("/boot/firmware/birdnetpi_config.json"),  # Raspberry Pi OS
         Path("/boot/birdnetpi_config.json"),  # DietPi, Armbian
+        Path("/root/birdnetpi_config.json"),  # Last-resort (DietPi pre-firstboot)
     ]
 
     for config_path in config_locations:

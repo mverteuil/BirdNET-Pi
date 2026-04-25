@@ -273,13 +273,21 @@ sudo chmod 0440 /etc/sudoers.d/birdnetpi-systemctl
 echo "Cloning repository..."
 sudo -u birdnetpi git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
 
-# Copy config file from /root to installation directory (if it exists)
-# This makes it accessible to the birdnetpi user
-if [ -f /root/birdnetpi_config.json ]; then
-    echo "Copying configuration file..."
-    sudo cp /root/birdnetpi_config.json "$INSTALL_DIR/birdnetpi_config.json"
-    sudo chown birdnetpi:birdnetpi "$INSTALL_DIR/birdnetpi_config.json"
-fi
+# Copy config file to installation directory so the birdnetpi user can read it.
+# Checked locations:
+#   /root/                — DietPi preserves it here on first boot
+#   /boot/firmware/       — RPi OS layout
+#   /boot/                — Armbian / generic SBC layout
+# Use sudo for the test too, because /root is mode 700 and a non-root invoker
+# of install.sh would otherwise skip the file silently.
+for CONFIG_SRC in /root/birdnetpi_config.json /boot/firmware/birdnetpi_config.json /boot/birdnetpi_config.json; do
+    if sudo test -f "$CONFIG_SRC"; then
+        echo "Copying configuration file from $CONFIG_SRC..."
+        sudo cp "$CONFIG_SRC" "$INSTALL_DIR/birdnetpi_config.json"
+        sudo chown birdnetpi:birdnetpi "$INSTALL_DIR/birdnetpi_config.json"
+        break
+    fi
+done
 
 # Install uv package manager system-wide to /opt/uv
 echo "Installing uv package manager..."
