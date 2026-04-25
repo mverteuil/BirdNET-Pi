@@ -279,7 +279,18 @@ function createSpeciesRow(species) {
     const commonNameDiv = tempDiv.querySelector(".common-name");
     if (commonNameDiv) {
       const commonNameText = commonNameDiv.textContent;
-      commonNameDiv.innerHTML = `<a href="${species.bow_url}" target="_blank" rel="noopener noreferrer" class="bow-link" aria-label="Birds of the World: ${species.scientific_name}">${commonNameText}</a>`;
+      const bowLink = document.createElement("a");
+      bowLink.href = species.bow_url;
+      bowLink.target = "_blank";
+      bowLink.rel = "noopener noreferrer";
+      bowLink.className = "bow-link";
+      bowLink.setAttribute(
+        "aria-label",
+        `Birds of the World: ${species.scientific_name}`,
+      );
+      bowLink.textContent = commonNameText;
+      commonNameDiv.textContent = "";
+      commonNameDiv.appendChild(bowLink);
     }
     nameCell.innerHTML = tempDiv.innerHTML;
   } else {
