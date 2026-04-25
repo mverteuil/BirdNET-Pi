@@ -353,7 +353,9 @@ exit 0
         preserve_script_path = boot_mount / "preserve_installer.sh"
         temp_preserve = Path("/tmp/preserve_installer.sh")
         temp_preserve.write_text(preserve_script_content)
-        subprocess.run(["sudo", "cp", str(temp_preserve), str(preserve_script_path)], check=True)
+        subprocess.run(
+            ["sudo", "cp", "-X", str(temp_preserve), str(preserve_script_path)], check=True
+        )
         subprocess.run(["sudo", "chmod", "+x", str(preserve_script_path)], check=True)
         temp_preserve.unlink()
 
@@ -438,11 +440,11 @@ exit 0
 
         temp_automation = Path("/tmp/Automation_Custom_PreScript.sh")
         temp_automation.write_text(automation_script_content)
-        subprocess.run(["sudo", "cp", str(temp_automation), str(prescript_path)], check=True)
+        subprocess.run(["sudo", "cp", "-X", str(temp_automation), str(prescript_path)], check=True)
         subprocess.run(["sudo", "chmod", "+x", str(prescript_path)], check=True)
 
         # Also copy as regular script for backwards compatibility
-        subprocess.run(["sudo", "cp", str(temp_automation), str(script_path)], check=True)
+        subprocess.run(["sudo", "cp", "-X", str(temp_automation), str(script_path)], check=True)
         subprocess.run(["sudo", "chmod", "+x", str(script_path)], check=True)
         temp_automation.unlink()
 
@@ -489,7 +491,7 @@ For more help, visit: https://github.com/your-repo/BirdNET-Pi
         readme_path = boot_mount / "BIRDNETPI_README.txt"
         temp_readme = Path("/tmp/BIRDNETPI_README.txt")
         temp_readme.write_text(readme_content)
-        subprocess.run(["sudo", "cp", str(temp_readme), str(readme_path)], check=True)
+        subprocess.run(["sudo", "cp", "-X", str(temp_readme), str(readme_path)], check=True)
         temp_readme.unlink()
 
         console.print("[green]✓ Copied install.sh with triple preservation methods:[/green]")
@@ -567,7 +569,7 @@ def copy_birdnetpi_config(  # noqa: C901
         temp_config = Path("/tmp/birdnetpi_config.json")
         temp_config.write_text(json.dumps(boot_config, indent=2) + "\n")
         subprocess.run(
-            ["sudo", "cp", str(temp_config), str(boot_mount / "birdnetpi_config.json")],
+            ["sudo", "cp", "-X", str(temp_config), str(boot_mount / "birdnetpi_config.json")],
             check=True,
         )
         console.print("[green]✓ BirdNET-Pi configuration written to boot partition[/green]")
@@ -1700,7 +1702,7 @@ def configure_dietpi_boot(  # noqa: C901
         # Write updated dietpi.txt
         temp_dietpi_txt = Path("/tmp/dietpi.txt")
         temp_dietpi_txt.write_text("".join(new_lines))
-        subprocess.run(["sudo", "cp", str(temp_dietpi_txt), str(dietpi_txt_path)], check=True)
+        subprocess.run(["sudo", "cp", "-X", str(temp_dietpi_txt), str(dietpi_txt_path)], check=True)
         temp_dietpi_txt.unlink()
 
         console.print("[green]✓ Updated dietpi.txt[/green]")
@@ -1743,7 +1745,9 @@ aWIFI_KEYMGR[0]='{wifi_keymgr}'
 """
                 temp_wifi = Path("/tmp/dietpi-wifi.txt")
                 temp_wifi.write_text(wifi_content)
-                subprocess.run(["sudo", "cp", str(temp_wifi), str(dietpi_wifi_path)], check=True)
+                subprocess.run(
+                    ["sudo", "cp", "-X", str(temp_wifi), str(dietpi_wifi_path)], check=True
+                )
                 temp_wifi.unlink()
                 console.print("[green]✓ Configured WiFi[/green]")
 
@@ -1774,7 +1778,7 @@ aWIFI_KEYMGR[0]='{wifi_keymgr}'
                 temp_config = Path("/tmp/dietpi_config_txt")
                 temp_config.write_text(config_content)
                 subprocess.run(
-                    ["sudo", "cp", str(temp_config), str(config_txt_path)],
+                    ["sudo", "cp", "-X", str(temp_config), str(config_txt_path)],
                     check=True,
                 )
                 temp_config.unlink()
@@ -1835,7 +1839,7 @@ aWIFI_KEYMGR[0]='{wifi_keymgr}'
                     temp_env = Path("/tmp/dietpi_env_txt")
                     temp_env.write_text(env_content)
                     subprocess.run(
-                        ["sudo", "cp", str(temp_env), str(dietpi_env_path)],
+                        ["sudo", "cp", "-X", str(temp_env), str(dietpi_env_path)],
                         check=True,
                     )
                     temp_env.unlink()
@@ -2058,7 +2062,8 @@ aWIFI_KEYMGR[0]='{wifi_keymgr}'
                     # Copy modified install.sh to /root on rootfs
                     install_dest = root_dir / "install.sh"
                     subprocess.run(
-                        ["sudo", "cp", str(modified_install_script), str(install_dest)], check=True
+                        ["sudo", "cp", "-X", str(modified_install_script), str(install_dest)],
+                        check=True,
                     )
                     subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
 
@@ -2197,7 +2202,7 @@ country = "US"
         temp_toml = Path("/tmp/birdnetpi_custom.toml")
         temp_toml.write_text(toml_content)
         subprocess.run(
-            ["sudo", "cp", str(temp_toml), str(boot_mount / "custom.toml")],
+            ["sudo", "cp", "-X", str(temp_toml), str(boot_mount / "custom.toml")],
             check=True,
         )
         temp_toml.unlink()
@@ -2274,7 +2279,7 @@ exit 0
             # Copy to boot partition
             firstrun_dest = boot_mount / "firstrun.sh"
             subprocess.run(
-                ["sudo", "cp", str(temp_firstrun), str(firstrun_dest)],
+                ["sudo", "cp", "-X", str(temp_firstrun), str(firstrun_dest)],
                 check=True,
             )
             # Make executable
@@ -2302,7 +2307,7 @@ exit 0
                 temp_cmdline = Path("/tmp/birdnetpi_cmdline.txt")
                 temp_cmdline.write_text(cmdline)
                 subprocess.run(
-                    ["sudo", "cp", str(temp_cmdline), str(cmdline_path)],
+                    ["sudo", "cp", "-X", str(temp_cmdline), str(cmdline_path)],
                     check=True,
                 )
                 temp_cmdline.unlink()
@@ -2343,7 +2348,7 @@ exit 0
             temp_config = Path("/tmp/birdnetpi_config_txt")
             temp_config.write_text(config_content)
             subprocess.run(
-                ["sudo", "cp", str(temp_config), str(config_txt_path)],
+                ["sudo", "cp", "-X", str(temp_config), str(config_txt_path)],
                 check=True,
             )
             temp_config.unlink()
@@ -2477,7 +2482,7 @@ fi
 
             # Copy to boot partition
             subprocess.run(
-                ["sudo", "cp", "-r", str(temp_clone), str(lrp_dest)],
+                ["sudo", "cp", "-rX", str(temp_clone), str(lrp_dest)],
                 check=True,
             )
 
@@ -2514,7 +2519,7 @@ echo "After shutdown, move the SD card to your Le Potato and boot it."
             temp_helper = Path("/tmp/lepotato_setup.sh")
             temp_helper.write_text(helper_script)
             subprocess.run(
-                ["sudo", "cp", str(temp_helper), str(boot_mount / "lepotato_setup.sh")],
+                ["sudo", "cp", "-X", str(temp_helper), str(boot_mount / "lepotato_setup.sh")],
                 check=True,
             )
             # Make executable
@@ -2566,7 +2571,7 @@ https://github.com/libre-computer-project/libretech-raspbian-portability
             temp_readme = Path("/tmp/birdnetpi_lepotato_readme.txt")
             temp_readme.write_text(readme_content)
             subprocess.run(
-                ["sudo", "cp", str(temp_readme), str(boot_mount / "LE_POTATO_README.txt")],
+                ["sudo", "cp", "-X", str(temp_readme), str(boot_mount / "LE_POTATO_README.txt")],
                 check=True,
             )
             temp_readme.unlink()
