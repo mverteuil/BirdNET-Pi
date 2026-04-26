@@ -29,6 +29,14 @@ from textual.widgets import (  # type: ignore[import-untyped]
 # Capability Calculation
 # ============================================================================
 
+# (os_key, device_key) pairs where SPI is known not to work in the current
+# state of this branch. Hide the SPI checkbox in the TUI for these combos
+# so users don't pick it expecting it to work.
+SPI_UNSUPPORTED: set[tuple[str, str]] = {
+    # Armbian Trixie vendor kernel: SPI overlay handling unresolved on RK3588S.
+    ("armbian", "orange_pi_5_pro"),
+}
+
 
 def get_combined_capabilities(
     os_key: str, device_key: str, os_properties: dict[str, Any]
@@ -46,13 +54,18 @@ def get_combined_capabilities(
     os_props = os_properties.get(os_key, {})
     device = DEVICES[device_key]
 
+    spi_unsupported = (os_key, device_key) in SPI_UNSUPPORTED
+
     return {
         # WiFi is supported if OS can configure it AND device has hardware
         "supports_wifi": (os_props.get("wifi_config_method") is not None and device.has_wifi),
         # Custom user supported if OS has a method other than root_only
         "supports_custom_user": os_props.get("user_config_method") not in [None, "root_only"],
-        # SPI supported if OS can configure it AND device has hardware
-        "supports_spi": (os_props.get("spi_config_method") is not None and device.has_spi),
+        # SPI supported if OS can configure it AND device has hardware AND the
+        # combo isn't in the known-broken list.
+        "supports_spi": (
+            os_props.get("spi_config_method") is not None and device.has_spi and not spi_unsupported
+        ),
         # Pass through OS-specific properties
         "install_sh_path": os_props.get("install_sh_path", "/boot/install.sh"),
         "install_sh_needs_preservation": os_props.get("install_sh_needs_preservation", False),
