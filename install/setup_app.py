@@ -63,6 +63,22 @@ class ServiceRegistry:
 _log_lock = threading.Lock()
 
 
+def _clean_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    """Build a subprocess env without inherited bash function exports.
+
+    install.sh exports a `sudo` bash function when running as root; bash
+    serializes it into the environment as ``BASH_FUNC_sudo%%=() { ... }``.
+    When sudo drops to a login shell for the target user, that entry is
+    re-parsed and the function body is executed as a command, failing with
+    ``BASH_FUNC_sudo%%=...: command not found``. Stripping these entries
+    prevents the leak into children.
+    """
+    env = {k: v for k, v in os.environ.items() if not k.startswith("BASH_FUNC_")}
+    if extra:
+        env.update(extra)
+    return env
+
+
 def log(status: str, message: str) -> None:
     """Thread-safe logging with timestamp.
 
@@ -207,10 +223,15 @@ def create_directories() -> None:
     """Create required data directories.
 
     Note: /opt/birdnetpi and birdnetpi user are created by install.sh before cloning.
+
+    Also enables persistent journald (Storage=persistent) by creating
+    /var/log/journal so post-mortem diagnosis after a hard power-cycle is
+    possible. DietPi defaults to log2ram which loses logs on hard reboot.
     """
     # Create data directories
     dirs_to_create = [
         "/var/log/birdnetpi",
+        "/var/log/journal",  # journald flips to persistent mode when this exists
         "/var/lib/birdnetpi/config",
         "/var/lib/birdnetpi/models",
         "/var/lib/birdnetpi/recordings",
@@ -247,6 +268,130 @@ def create_directories() -> None:
         stderr=subprocess.DEVNULL,
     )
 
+    # If running on DietPi, disable dietpi-ramlog so /var/log isn't shadowed
+    # by tmpfs. Without this, the /var/log/journal directory we just created
+    # becomes invisible at boot and journald reverts to volatile storage —
+    # which means a hung boot leaves no logs behind.
+    if Path("/etc/systemd/system/dietpi-ramlog.service").exists():
+        subprocess.run(
+            ["sudo", "systemctl", "disable", "--now", "dietpi-ramlog.service"],
+            check=False,  # already-disabled is fine
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
+def _read_device_tree_model() -> str:
+    """Return /proc/device-tree/model contents, empty string on any failure."""
+    try:
+        return Path("/proc/device-tree/model").read_text().strip("\x00").strip()
+    except OSError:
+        return ""
+
+
+def install_opi5pro_brcmfmac_firmware() -> None:
+    """Symlink the OPi 5 Pro board-specific brcmfmac path to the generic blob.
+
+    The kernel looks for ``brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.{bin,txt}``
+    first and falls back to the generic ``brcmfmac43456-sdio.{bin,txt}`` when
+    missing. Joshua-Riek/firmware ships the board-name files as git symlinks
+    pointing at the generic blobs (the firmware content is identical), so
+    creating the same symlinks locally is sufficient to silence the
+    ``Direct firmware load ... failed with error -2`` warning and remove
+    that as a confounding variable.
+
+    The actual warm-reboot recovery is handled by
+    ``install_brcmfmac_reset_service`` (rfkill power-cycle of the WLAN
+    GPIO). This function is purely cosmetic in dmesg terms.
+
+    No-op on devices that aren't an OPi 5 Pro.
+    """
+    model = _read_device_tree_model().lower()
+    if "orange pi 5 pro" not in model and "orangepi 5 pro" not in model:
+        return
+
+    target_dir = Path("/lib/firmware/brcm")
+    pairs = [
+        ("brcmfmac43456-sdio.bin", "brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.bin"),
+        ("brcmfmac43456-sdio.txt", "brcmfmac43456-sdio.rockchip,rk3588s-orangepi-5-pro.txt"),
+    ]
+    for source, link_name in pairs:
+        if not (target_dir / source).exists():
+            continue
+        link_target = target_dir / link_name
+        if link_target.exists() or link_target.is_symlink():
+            continue
+        subprocess.run(
+            ["sudo", "ln", "-s", source, str(link_target)],
+            check=False,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
+def install_brcmfmac_reset_service() -> None:
+    """Install a oneshot service that hard-resets brcmfmac before networking.
+
+    The AP6256 (BCM4345/9) module on the Orange Pi 5 Pro fails to
+    re-initialize on warm reboot — driver loads, SDIO probe falls back to
+    generic firmware, but the chip is in a half-stuck state from the
+    previous boot and never associates. Even unloading/reloading the kernel
+    module isn't enough; the WiFi/BT power rail has to be cycled via the
+    Rockchip rfkill driver (gpio-controlled).
+
+    Sequence per boot:
+      1. rmmod brcmfmac brcmutil
+      2. rfkill block wifi (drops the WLAN power GPIO)
+      3. brief wait
+      4. rfkill unblock wifi (re-asserts WLAN power)
+      5. modprobe brcmfmac (re-binds with a freshly-powered chip)
+    """
+    # Only relevant on DietPi (which uses ifupdown). On other distros we'd
+    # need different sequencing.
+    if not Path("/etc/systemd/system/dietpi-ramlog.service").exists():
+        return
+
+    unit_path = "/etc/systemd/system/birdnetpi-brcmfmac-reset.service"
+    unit_body = """[Unit]
+Description=Reset brcmfmac and power-cycle WiFi chip (warm-reboot workaround)
+DefaultDependencies=no
+Before=networking.service network-pre.target
+After=systemd-modules-load.service
+ConditionPathExists=/sys/module/brcmfmac
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=-/sbin/rmmod brcmfmac
+ExecStart=-/sbin/rmmod brcmutil
+ExecStart=-/usr/sbin/rfkill block wifi
+ExecStart=/bin/sleep 1
+ExecStart=-/usr/sbin/rfkill unblock wifi
+ExecStart=/bin/sleep 1
+ExecStart=/sbin/modprobe brcmfmac
+
+[Install]
+WantedBy=sysinit.target
+"""
+    temp_unit = Path("/tmp/birdnetpi-brcmfmac-reset.service")
+    temp_unit.write_text(unit_body)
+    subprocess.run(
+        ["sudo", "mv", str(temp_unit), unit_path],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["sudo", "systemctl", "enable", "birdnetpi-brcmfmac-reset.service"],
+        check=False,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
 
 def has_waveshare_epaper_hat() -> bool:
     """Detect if a Waveshare e-paper HAT is connected.
@@ -278,7 +423,7 @@ def install_assets() -> None:
             "latest",
             "--skip-existing",
         ],
-        env={**os.environ, "BIRDNETPI_DATA": "/var/lib/birdnetpi"},
+        env=_clean_env({"BIRDNETPI_DATA": "/var/lib/birdnetpi"}),
         check=False,
         capture_output=True,
         text=True,
@@ -790,6 +935,14 @@ def main() -> None:
                 ("Configuring Caddy web server", configure_caddy),
                 ("Installing systemd services", install_systemd_services),
                 (
+                    "Installing OPi 5 Pro WiFi firmware (board-specific NVRAM)",
+                    install_opi5pro_brcmfmac_firmware,
+                ),
+                (
+                    "Installing brcmfmac reset workaround (warm-reboot fix)",
+                    install_brcmfmac_reset_service,
+                ),
+                (
                     "Downloading BirdNET assets (may take 1-10 minutes depending on connection)",
                     install_assets,
                 ),
@@ -831,7 +984,7 @@ def main() -> None:
             setup_cmd.append("--non-interactive")
         result = subprocess.run(
             setup_cmd,
-            env={**os.environ, **setup_env},
+            env=_clean_env(setup_env),
             check=False,
             stdin=sys.stdin if sys.stdin.isatty() else subprocess.DEVNULL,
             capture_output=False,

@@ -151,21 +151,21 @@ DEVICE_PROPERTIES = {
         "has_wifi": False,  # No WiFi hardware
         "has_spi": True,  # GPIO header supports SPI
     },
-    "orangepi5": {
+    "orange_pi_0w2": {
         "has_wifi": True,  # Built-in WiFi
-        "has_spi": True,
+        "has_spi": True,  # Allwinner H618 supports SPI
     },
-    "orangepi5plus": {
+    "orange_pi_5_plus": {
         "has_wifi": True,  # Built-in WiFi
-        "has_spi": True,
+        "has_spi": True,  # RK3588 supports SPI
     },
-    "orangepi5pro": {
+    "orange_pi_5_pro": {
         "has_wifi": True,  # Built-in WiFi
-        "has_spi": True,
+        "has_spi": True,  # RK3588 supports SPI
     },
-    "rock5b": {
+    "rock_5b": {
         "has_wifi": True,  # M.2 WiFi module support
-        "has_spi": True,
+        "has_spi": True,  # RK3588 supports SPI
     },
 }
 
@@ -208,7 +208,7 @@ def copy_installer_script(
     config: dict[str, Any],
     os_key: str,
     device_key: str,
-) -> None:
+) -> Path | None:
     """Copy install.sh to boot partition with OS-specific handling.
 
     Args:
@@ -216,6 +216,9 @@ def copy_installer_script(
         config: Configuration dictionary with copy_installer flag
         os_key: OS type for capability lookup
         device_key: Device key for capability lookup
+
+    Returns:
+        Path to the modified install.sh temp file, or None if not copied
     """
     caps = get_combined_capabilities(os_key, device_key)
 
@@ -223,18 +226,51 @@ def copy_installer_script(
     # because the boot partition will be deleted after first boot
     needs_preservation = caps.get("install_sh_needs_preservation", False)
 
-    if not config.get("copy_installer") and not needs_preservation:
-        return
+    console.print(f"[cyan]DEBUG: os={os_key}, device={device_key}[/cyan]")
+    copy_inst = config.get("copy_installer")
+    console.print(f"[cyan]DEBUG: copy_installer={copy_inst}, preserve={needs_preservation}[/cyan]")
+
+    if not copy_inst and not needs_preservation:
+        console.print("[yellow]DEBUG: Skipping (not needed)[/yellow]")
+        return None
 
     install_script = Path(__file__).parent / "install.sh"
     if not install_script.exists():
         console.print("[yellow]Warning: install.sh not found, skipping copy[/yellow]")
-        return
+        return None
+
+    # Read install.sh and substitute repo/branch defaults if configured
+    install_content = install_script.read_text()
+
+    # Debug: show what's in config
+    console.print(f"[cyan]DEBUG: config keys = {list(config.keys())}[/cyan]")
+    console.print(f"[cyan]DEBUG: birdnet_branch = {config.get('birdnet_branch')}[/cyan]")
+    console.print(f"[cyan]DEBUG: birdnet_repo_url = {config.get('birdnet_repo_url')}[/cyan]")
+
+    # Replace REPO_URL default if custom repo configured
+    if config.get("birdnet_repo_url"):
+        repo_url = config["birdnet_repo_url"]
+        install_content = install_content.replace(
+            'REPO_URL="${BIRDNETPI_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"',
+            f'REPO_URL="${{BIRDNETPI_REPO_URL:-{repo_url}}}"',
+        )
+
+    # Replace BRANCH default if custom branch configured
+    if config.get("birdnet_branch"):
+        branch = config["birdnet_branch"]
+        install_content = install_content.replace(
+            'BRANCH="${BIRDNETPI_BRANCH:-main}"', f'BRANCH="${{BIRDNETPI_BRANCH:-{branch}}}"'
+        )
+
+    # Write modified install.sh to temporary location, then copy to boot
+    temp_install = Path("/tmp/install.sh")
+    temp_install.write_text(install_content)
 
     install_dest = boot_mount / "install.sh"
-
-    # Copy install.sh to boot partition
-    subprocess.run(["sudo", "cp", str(install_script), str(install_dest)], check=True)
+    # cp -X skips macOS extended attributes; without it, copying onto an
+    # anylinuxfs NFS mount (which doesn't support xattrs) fails with
+    # "could not copy extended attributes: Operation not permitted".
+    subprocess.run(["sudo", "cp", "-X", str(temp_install), str(install_dest)], check=True)
     subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
 
     # For OSes that need preservation (DietPi), create wrapper script
@@ -244,111 +280,301 @@ def copy_installer_script(
 # Preserve and execute install.sh before/after DIETPISETUP partition is deleted
 # This script runs during DietPi first boot automation
 
+LOGFILE="/var/log/birdnetpi_preserve.log"
+exec >> "$LOGFILE" 2>&1
+
+echo "=== BirdNET-Pi Installer Preservation Script ==="
+echo "Started at: $(date)"
+echo "Running as: $(whoami)"
+echo "Working directory: $(pwd)"
+
+# Debug: Show what's mounted
+echo ""
+echo "=== Mounted filesystems ==="
+mount | grep -E '/boot|/root'
+
+# Debug: Show what's in /boot locations
+echo ""
+echo "=== /boot/firmware contents ==="
+ls -la /boot/firmware/ 2>&1 || echo "/boot/firmware does not exist"
+
+echo ""
+echo "=== /boot contents ==="
+ls -la /boot/ 2>&1 || echo "/boot does not exist"
+
 # Try /boot/firmware first (Raspberry Pi), then /boot (other boards)
 if [ -f /boot/firmware/install.sh ]; then
+    echo ""
+    echo "Found install.sh at /boot/firmware/install.sh"
     cp /boot/firmware/install.sh {final_path}
     chmod +x {final_path}
     echo "Preserved install.sh from /boot/firmware/ to {final_path}"
 elif [ -f /boot/install.sh ]; then
+    echo ""
+    echo "Found install.sh at /boot/install.sh"
     cp /boot/install.sh {final_path}
     chmod +x {final_path}
     echo "Preserved install.sh from /boot/ to {final_path}"
-fi
-
-if [ -f /boot/firmware/birdnetpi_config.txt ]; then
-    cp /boot/firmware/birdnetpi_config.txt /root/birdnetpi_config.txt
-    echo "Preserved birdnetpi_config.txt from /boot/firmware/ to /root/"
-elif [ -f /boot/birdnetpi_config.txt ]; then
-    cp /boot/birdnetpi_config.txt /root/birdnetpi_config.txt
-    echo "Preserved birdnetpi_config.txt from /boot/ to /root/"
-fi
-
-# Execute the preserved install.sh
-# DietPi automation runs as root, so install.sh will run as root
-if [ -f {final_path} ]; then
-    echo "Executing preserved install.sh from {final_path}"
-    cd /root
-
-    # Source environment variables from config if present
-    if [ -f /root/birdnetpi_config.txt ]; then
-        echo "Loading environment variables from /root/birdnetpi_config.txt"
-        # Source only the export lines
-        source <(grep "^export " /root/birdnetpi_config.txt || true)
-    fi
-
-    # Run install.sh
-    bash {final_path}
 else
-    echo "ERROR: Could not find preserved install.sh at {final_path}"
-    exit 1
+    echo ""
+    echo "ERROR: Could not find install.sh in /boot/firmware/ or /boot/"
+    echo "Skipping installation - install.sh must be run manually"
+    exit 0  # Don't fail DietPi automation, just skip
 fi
+
+if [ -f /boot/firmware/birdnetpi_config.json ]; then
+    cp /boot/firmware/birdnetpi_config.json /root/birdnetpi_config.json
+    echo "Preserved birdnetpi_config.json from /boot/firmware/ to /root/"
+elif [ -f /boot/birdnetpi_config.json ]; then
+    cp /boot/birdnetpi_config.json /root/birdnetpi_config.json
+    echo "Preserved birdnetpi_config.json from /boot/ to /root/"
+fi
+
+# Verify preservation was successful
+if [ ! -f {final_path} ]; then
+    echo ""
+    echo "ERROR: Failed to preserve install.sh to {final_path}"
+    echo "Installation must be run manually"
+    exit 0  # Don't fail DietPi automation
+fi
+
+echo ""
+echo "Successfully preserved install.sh to {final_path}"
+echo "Installation will NOT run automatically - run manually with:"
+echo "  sudo bash {final_path}"
+echo ""
+echo "Preservation complete at: $(date)"
+echo "Log saved to: $LOGFILE"
+
+# NOTE: We do NOT execute install.sh automatically anymore
+# Users should run it manually after first boot to have control
+exit 0
 """
         preserve_script_path = boot_mount / "preserve_installer.sh"
         temp_preserve = Path("/tmp/preserve_installer.sh")
         temp_preserve.write_text(preserve_script_content)
-        subprocess.run(["sudo", "cp", str(temp_preserve), str(preserve_script_path)], check=True)
+        subprocess.run(
+            ["sudo", "cp", "-X", str(temp_preserve), str(preserve_script_path)], check=True
+        )
         subprocess.run(["sudo", "chmod", "+x", str(preserve_script_path)], check=True)
         temp_preserve.unlink()
-        console.print(f"[green]✓ Copied install.sh with preservation to {final_path}[/green]")
+
+        # ALSO create DietPi-Automation pre-script (runs BEFORE partition cleanup)
+        # This is critical because DIETPISETUP partition gets deleted after first boot
+        # Automation_Custom_PreScript.sh runs BEFORE the cleanup
+        automation_script_content = f"""#!/bin/bash
+# DietPi Pre-Automation Script - runs BEFORE DIETPISETUP partition deletion
+# This preserves install.sh from /boot BEFORE it gets deleted
+
+LOGFILE="/var/log/birdnetpi_automation.log"
+exec >> "$LOGFILE" 2>&1
+
+echo "=== BirdNET-Pi DietPi Pre-Automation Script ==="
+echo "Started at: $(date)"
+echo "Running as: $(whoami)"
+echo "PWD: $(pwd)"
+
+# Show what boot partitions exist
+echo ""
+echo "=== Available boot partitions ==="
+mount | grep -E "/boot"
+echo ""
+
+# Try to preserve install.sh from boot partition
+# On Orange Pi 5 Pro and similar, DIETPISETUP is at /boot (not /boot/firmware)
+if [ -f /boot/install.sh ]; then
+    echo "Found install.sh at /boot/install.sh"
+    cp -v /boot/install.sh {final_path}
+    chmod +x {final_path}
+    echo "Preserved install.sh to {final_path}"
+elif [ -f /boot/firmware/install.sh ]; then
+    echo "Found install.sh at /boot/firmware/install.sh"
+    cp -v /boot/firmware/install.sh {final_path}
+    chmod +x {final_path}
+    echo "Preserved install.sh to {final_path}"
+else
+    echo "ERROR: Could not find install.sh in /boot or /boot/firmware"
+    echo ""
+    echo "=== /boot contents ==="
+    ls -la /boot/ 2>&1 || echo "/boot not accessible"
+    echo ""
+    echo "=== /boot/firmware contents ==="
+    ls -la /boot/firmware/ 2>&1 || echo "/boot/firmware not accessible"
+    exit 1
+fi
+
+# Also preserve config if present
+if [ -f /boot/birdnetpi_config.json ]; then
+    cp -v /boot/birdnetpi_config.json /root/birdnetpi_config.json
+    echo "Preserved birdnetpi_config.json from /boot"
+elif [ -f /boot/firmware/birdnetpi_config.json ]; then
+    cp -v /boot/firmware/birdnetpi_config.json /root/birdnetpi_config.json
+    echo "Preserved birdnetpi_config.json from /boot/firmware"
+fi
+
+# Verify preservation
+if [ -f {final_path} ]; then
+    echo ""
+    echo "SUCCESS: install.sh preserved to {final_path}"
+    ls -lh {final_path}
+    echo ""
+    echo "================================================"
+    echo "BirdNET-Pi installer is ready!"
+    echo "After first boot, run: sudo bash {final_path}"
+    echo "================================================"
+else
+    echo ""
+    echo "FAILURE: Could not preserve install.sh"
+    exit 1
+fi
+
+echo ""
+echo "Pre-automation script completed at: $(date)"
+echo "Log saved to: $LOGFILE"
+exit 0
+"""
+        # Create BOTH PreScript (runs before cleanup) and regular Script (runs after)
+        # PreScript is what we need, but we'll create both for maximum compatibility
+        prescript_path = boot_mount / "Automation_Custom_PreScript.sh"
+        script_path = boot_mount / "Automation_Custom_Script.sh"
+
+        temp_automation = Path("/tmp/Automation_Custom_PreScript.sh")
+        temp_automation.write_text(automation_script_content)
+        subprocess.run(["sudo", "cp", "-X", str(temp_automation), str(prescript_path)], check=True)
+        subprocess.run(["sudo", "chmod", "+x", str(prescript_path)], check=True)
+
+        # Also copy as regular script for backwards compatibility
+        subprocess.run(["sudo", "cp", "-X", str(temp_automation), str(script_path)], check=True)
+        subprocess.run(["sudo", "chmod", "+x", str(script_path)], check=True)
+        temp_automation.unlink()
+
+        # Create README with installation instructions
+        readme_content = f"""BirdNET-Pi Installation Instructions for DietPi
+===============================================
+
+Your SD card has been configured for BirdNET-Pi installation!
+
+AFTER FIRST BOOT:
+-----------------
+1. SSH into your device
+2. Check if install.sh was preserved:
+
+   ls -l {final_path}
+
+3. If the file exists, run the installer:
+
+   sudo bash {final_path}
+
+TROUBLESHOOTING:
+----------------
+If {final_path} doesn't exist, check the preservation logs:
+
+   cat /var/log/birdnetpi_preserve.log       # AUTO_SETUP_CUSTOM_SCRIPT_EXEC log
+   cat /var/log/birdnetpi_automation.log     # Automation_Custom_Script.sh log
+
+These logs show what happened during the preservation process.
+At least one of these methods should work on your device.
+
+MANUAL INSTALLATION:
+--------------------
+If preservation failed, you can still install BirdNET-Pi manually:
+
+1. Clone the repository:
+   git clone https://github.com/your-repo/BirdNET-Pi.git
+   cd BirdNET-Pi
+
+2. Run the installer:
+   sudo bash install/install.sh
+
+For more help, visit: https://github.com/your-repo/BirdNET-Pi
+"""
+        readme_path = boot_mount / "BIRDNETPI_README.txt"
+        temp_readme = Path("/tmp/BIRDNETPI_README.txt")
+        temp_readme.write_text(readme_content)
+        subprocess.run(["sudo", "cp", "-X", str(temp_readme), str(readme_path)], check=True)
+        temp_readme.unlink()
+
+        console.print("[green]✓ Copied install.sh with triple preservation methods:[/green]")
+        console.print("[dim]  - preserve_installer.sh (via AUTO_SETUP_CUSTOM_SCRIPT_EXEC)[/dim]")
+        console.print(
+            "[dim]  - Automation_Custom_PreScript.sh (runs BEFORE partition cleanup)[/dim]"
+        )
+        console.print("[dim]  - Automation_Custom_Script.sh (runs AFTER partition cleanup)[/dim]")
+        console.print(f"[dim]  - Target location: {final_path}[/dim]")
+        console.print("[green]✓ Created BIRDNETPI_README.txt on boot partition[/green]")
     else:
         final_path = caps.get("install_sh_path", "/boot/install.sh")
         console.print(f"[green]✓ Copied install.sh to {final_path}[/green]")
 
+    # Return the temp file path so it can be used for rootfs copy
+    return temp_install
 
-def copy_birdnetpi_config(
+
+def copy_birdnetpi_config(  # noqa: C901
     boot_mount: Path,
     config: dict[str, Any],
-) -> None:
-    """Copy birdnetpi_config.txt to boot partition for unattended install.sh.
+    os_key: str | None = None,
+    device_key: str | None = None,
+) -> Path | None:
+    """Copy birdnetpi_config.json to boot partition for unattended install.sh.
 
     Args:
         boot_mount: Path to mounted boot partition
         config: Configuration dictionary with BirdNET-Pi settings
+        os_key: Operating system key (e.g., "dietpi", "raspbian")
+        device_key: Device key (e.g., "orange_pi_5_pro", "pi_5")
+
+    Returns:
+        Path to temporary config file if created, None otherwise
     """
-    # Build config lines from available settings
-    config_lines = ["# BirdNET-Pi boot configuration"]
-    has_config = False
+    import json
 
-    # Install-time environment variables (optional)
+    # Build JSON config from all available settings
+    boot_config: dict[str, Any] = {}
+
+    # OS and device information
+    if os_key:
+        boot_config["os"] = os_key
+    if device_key:
+        boot_config["device"] = device_key
+
+    # Install-time settings
     if config.get("birdnet_repo_url"):
-        config_lines.append(f"export BIRDNETPI_REPO_URL={config['birdnet_repo_url']}")
-        has_config = True
-
+        boot_config["repo_url"] = config["birdnet_repo_url"]
     if config.get("birdnet_branch"):
-        config_lines.append(f"export BIRDNETPI_BRANCH={config['birdnet_branch']}")
-        has_config = True
+        boot_config["branch"] = config["birdnet_branch"]
+
+    # WiFi settings
+    if config.get("wifi_ssid"):
+        boot_config["wifi_ssid"] = config["wifi_ssid"]
+    if config.get("wifi_password"):
+        boot_config["wifi_password"] = config["wifi_password"]
+    if config.get("wifi_auth"):
+        boot_config["wifi_auth"] = config["wifi_auth"]
 
     # Application settings
     if config.get("birdnet_device_name"):
-        config_lines.append(f"device_name={config['birdnet_device_name']}")
-        has_config = True
-
+        boot_config["device_name"] = config["birdnet_device_name"]
     if config.get("birdnet_latitude"):
-        config_lines.append(f"latitude={config['birdnet_latitude']}")
-        has_config = True
-
+        boot_config["latitude"] = config["birdnet_latitude"]
     if config.get("birdnet_longitude"):
-        config_lines.append(f"longitude={config['birdnet_longitude']}")
-        has_config = True
-
+        boot_config["longitude"] = config["birdnet_longitude"]
     if config.get("birdnet_timezone"):
-        config_lines.append(f"timezone={config['birdnet_timezone']}")
-        has_config = True
-
+        boot_config["timezone"] = config["birdnet_timezone"]
     if config.get("birdnet_language"):
-        config_lines.append(f"language={config['birdnet_language']}")
-        has_config = True
+        boot_config["language"] = config["birdnet_language"]
 
     # Only write if we have at least one setting
-    if has_config:
-        temp_config = Path("/tmp/birdnetpi_config.txt")
-        temp_config.write_text("\n".join(config_lines) + "\n")
+    if boot_config:
+        temp_config = Path("/tmp/birdnetpi_config.json")
+        temp_config.write_text(json.dumps(boot_config, indent=2) + "\n")
         subprocess.run(
-            ["sudo", "cp", str(temp_config), str(boot_mount / "birdnetpi_config.txt")],
+            ["sudo", "cp", "-X", str(temp_config), str(boot_mount / "birdnetpi_config.json")],
             check=True,
         )
-        temp_config.unlink()
         console.print("[green]✓ BirdNET-Pi configuration written to boot partition[/green]")
+        return temp_config
+    return None
 
 
 # OS and device image URLs (Lite/Minimal versions for headless server)
@@ -424,10 +650,10 @@ OS_IMAGES = {
                     },
                 ),
                 (
-                    "orange_pi_5",
+                    "orange_pi_0w2",
                     {
-                        "name": "Orange Pi 5",
-                        "url": "https://dl.armbian.com/orangepi5/Bookworm_current_minimal",
+                        "name": "Orange Pi Zero 2W",
+                        "url": "https://dl.armbian.com/orangepizero2w/Bookworm_current_minimal",
                         "is_armbian": True,
                     },
                 ),
@@ -502,10 +728,10 @@ OS_IMAGES = {
                 ),
                 # Non-Pi devices in alphabetical order
                 (
-                    "orange_pi_5",
+                    "orange_pi_0w2",
                     {
-                        "name": "Orange Pi 5",
-                        "url": "https://dietpi.com/downloads/images/DietPi_OrangePi5-ARMv8-Bookworm.img.xz",
+                        "name": "Orange Pi Zero 2W",
+                        "url": "https://dietpi.com/downloads/images/DietPi_OrangePiZero2W-ARMv8-Bookworm.img.xz",
                         "is_dietpi": True,
                     },
                 ),
@@ -536,16 +762,6 @@ OS_IMAGES = {
             ]
         ),
     },
-}
-
-# Legacy PI_IMAGES dict for backwards compatibility
-PI_IMAGES = {
-    "Pi 5": OS_IMAGES["raspbian"]["devices"]["pi_5"],
-    "Pi 4": OS_IMAGES["raspbian"]["devices"]["pi_4"],
-    "Pi 3": OS_IMAGES["raspbian"]["devices"]["pi_3"],
-    "Pi Zero 2 W": OS_IMAGES["raspbian"]["devices"]["pi_zero_2w"],
-    "Le Potato (Raspbian)": OS_IMAGES["raspbian"]["devices"]["le_potato"],
-    "Le Potato (Armbian)": OS_IMAGES["armbian"]["devices"]["le_potato"],
 }
 
 CONFIG_DIR = Path.home() / ".config" / "birdnetpi"
@@ -752,213 +968,12 @@ def select_device(device_index: int | None = None) -> str:
     return selected_device["device"]
 
 
-def select_pi_version(
-    saved_device_type: str | None = None,
-    device_type_override: str | None = None,
-    edit_mode: bool = False,
-) -> str:
-    """Prompt user to select device model.
-
-    Args:
-        saved_device_type: Device type from saved profile
-        device_type_override: CLI override for device type
-        edit_mode: If True, show prompts with defaults; if False, auto-use saved values
-
-    Returns:
-        Selected device model name (e.g., "Pi 4", "Le Potato (Armbian)")
-    """
-    # Use override if provided
-    if device_type_override:
-        if device_type_override not in PI_IMAGES:
-            console.print(f"[red]Invalid device type: {device_type_override}[/red]")
-            console.print(f"[yellow]Available types: {', '.join(PI_IMAGES.keys())}[/yellow]")
-            sys.exit(1)
-        console.print(f"[cyan]Using device type from CLI: {device_type_override}[/cyan]")
-        return device_type_override
-
-    # Use saved value if not in edit mode
-    if saved_device_type and not edit_mode:
-        if saved_device_type in PI_IMAGES:
-            console.print(f"[dim]Using saved device type: {saved_device_type}[/dim]")
-            return saved_device_type
-        else:
-            console.print(
-                f"[yellow]Warning: Saved device type '{saved_device_type}' not found[/yellow]"
-            )
-
-    # Prompt user to select
-    console.print()
-    console.print("[bold cyan]Select Device Model:[/bold cyan]")
-    table = Table(show_header=True, header_style="bold cyan")
-    table.add_column("Index", style="dim")
-    table.add_column("Model", style="green")
-    table.add_column("Notes", style="dim")
-
-    # Map version numbers to model names for intuitive selection
-    version_map = {
-        "5": "Pi 5",
-        "4": "Pi 4",
-        "3": "Pi 3",
-        "0": "Pi Zero 2 W",
-        "R": "Le Potato (Raspbian)",
-        "A": "Le Potato (Armbian)",
-    }
-
-    # Display in order (0, 3, 4, 5, R, A)
-    display_order = [
-        ("0", "Pi Zero 2 W", ""),
-        ("3", "Pi 3", ""),
-        ("4", "Pi 4", ""),
-        ("5", "Pi 5", ""),
-        ("R", "Le Potato (Raspbian)", "Two-step boot required"),
-        ("A", "Le Potato (Armbian)", "Native Armbian, direct boot"),
-    ]
-
-    for version, model, notes in display_order:
-        table.add_row(version, model, notes)
-
-    console.print(table)
-    console.print()
-
-    # Use saved value as default in edit mode
-    default_choice = None
-    if edit_mode and saved_device_type:
-        # Find the key for the saved device type
-        for key, model in version_map.items():
-            if model == saved_device_type:
-                default_choice = key
-                break
-
-    choice = Prompt.ask(
-        "[bold]Select device model[/bold]",
-        choices=list(version_map.keys()),
-        default=default_choice,
-        show_default=bool(default_choice),
-    )
-
-    return version_map[choice]
-
-
-def download_image(pi_version: str, download_dir: Path) -> Path:  # noqa: C901
-    """Download Raspberry Pi OS or Armbian image if not already cached.
-
-    Args:
-        pi_version: Device model name (e.g., "Pi 4", "Le Potato (Armbian)")
-        download_dir: Directory to store downloaded images
-
-    Returns:
-        Path to the downloaded image file
-    """
-    image_info = PI_IMAGES[pi_version]
-    url = image_info["url"]
-    is_armbian = image_info.get("is_armbian", False)
-
-    # For Armbian, follow redirects to get actual download URL
-    if is_armbian:
-        console.print(f"[cyan]Resolving Armbian image URL for {pi_version}...[/cyan]")
-        # HEAD request to follow redirects and get actual filename
-        # SSL verification is enabled - redirect should have valid cert
-        head_response = requests.head(url, allow_redirects=True, timeout=30)
-        head_response.raise_for_status()
-
-        # Extract final URL and filename after redirect
-        final_url = head_response.url
-        url = final_url  # Use the actual file URL for download
-        filename = final_url.split("/")[-1]
-
-        console.print(f"[dim]Resolved to: {filename}[/dim]")
-    else:
-        filename = url.split("/")[-1]
-
-    filepath = download_dir / filename
-
-    if filepath.exists():
-        console.print(f"[green]Using cached image: {filepath}[/green]")
-        return filepath
-
-    console.print(f"[cyan]Downloading image for {pi_version}...[/cyan]")
-
-    with Progress(
-        TextColumn("[bold blue]{task.description}"),
-        BarColumn(),
-        DownloadColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
-        # Download with SSL verification enabled
-        response = requests.get(url, stream=True, timeout=30)
-        response.raise_for_status()
-
-        total = int(response.headers.get("content-length", 0))
-        task = progress.add_task(f"Downloading {filename}", total=total)
-
-        with open(filepath, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-                progress.update(task, advance=len(chunk))
-
-    console.print(f"[green]Downloaded: {filepath}[/green]")
-
-    # Verify SHA256 for Armbian (download .sha file from same location)
-    if is_armbian:
-        console.print("[cyan]Verifying image integrity...[/cyan]")
-        sha_url = f"{url}.sha"
-        try:
-            sha_response = requests.get(sha_url, timeout=30)
-            sha_response.raise_for_status()
-
-            # Parse SHA file - handle different formats
-            sha_content = sha_response.text.strip()
-
-            # Check if this looks like binary data (not a text SHA file)
-            if not sha_content.isprintable() or len(sha_content) < 64:
-                raise ValueError("SHA file does not contain valid text")
-
-            # Try to extract hash - handle formats like:
-            # "hash filename" or just "hash"
-            parts = sha_content.split()
-            if parts:
-                expected_sha = parts[0]
-                # Validate it looks like a hex hash (64 chars for SHA256)
-                if not (
-                    len(expected_sha) == 64
-                    and all(c in "0123456789abcdefABCDEF" for c in expected_sha)
-                ):
-                    raise ValueError(f"Invalid SHA256 hash format: {expected_sha[:20]}...")
-            else:
-                raise ValueError("Could not extract hash from SHA file")
-
-            # Calculate actual SHA256
-            import hashlib
-
-            sha256_hash = hashlib.sha256()
-            with open(filepath, "rb") as f:
-                for byte_block in iter(lambda: f.read(8192), b""):
-                    sha256_hash.update(byte_block)
-            actual_sha = sha256_hash.hexdigest()
-
-            if actual_sha == expected_sha:
-                console.print("[green]✓ SHA256 verification passed[/green]")
-            else:
-                console.print("[red]✗ SHA256 verification failed![/red]")
-                console.print(f"[red]Expected: {expected_sha}[/red]")
-                console.print(f"[red]Got: {actual_sha}[/red]")
-                filepath.unlink()  # Delete corrupted file
-                sys.exit(1)
-        except Exception as e:
-            console.print(f"[yellow]Warning: Could not verify SHA256: {e}[/yellow]")
-            console.print("[yellow]Proceeding anyway, but file integrity is not verified[/yellow]")
-
-    return filepath
-
-
 def download_image_new(os_key: str, device_key: str, download_dir: Path) -> Path:  # noqa: C901
     """Download OS image for the selected OS and device.
 
     Args:
         os_key: Selected OS key (e.g., "raspbian", "armbian", "dietpi")
-        device_key: Selected device key (e.g., "pi_4", "orange_pi_5")
+        device_key: Selected device key (e.g., "pi_4", "orange_pi_5_pro")
         download_dir: Directory to store downloaded images
 
     Returns:
@@ -1411,12 +1426,125 @@ PRESET_USER_SHELL="bash"
             console.print("[yellow]Warning: Could not unmount anylinuxfs[/yellow]")
 
 
+def download_waveshare_library(boot_mount: Path) -> None:
+    """Download Waveshare ePaper library to boot partition for offline installation.
+
+    Uses sparse-checkout to download only the Python subdirectory (~6MB transfer),
+    then creates a compressed tarball with only essential files (lib/ and setup.py).
+    Skips pic/ (example images) and examples/ (test scripts) which aren't needed.
+
+    The compressed tarball saves significant boot partition space compared to the
+    uncompressed directory structure (~1-2MB vs ~5-6MB).
+
+    Args:
+        boot_mount: Path to the mounted boot partition where tarball should be copied
+    """
+    console.print()
+    waveshare_tarball = boot_mount / "waveshare-epd.tar.gz"
+    temp_waveshare = Path("/tmp/waveshare_clone")
+    temp_staging = Path("/tmp/waveshare_staging")
+
+    # Remove old temp directories if they exist
+    # Use rm -rf because git clone may create files with restricted permissions
+    if temp_waveshare.exists():
+        subprocess.run(["rm", "-rf", str(temp_waveshare)], check=True)
+    if temp_staging.exists():
+        subprocess.run(["rm", "-rf", str(temp_staging)], check=True)
+
+    # Clone only the Python subdirectory using sparse-checkout
+    # Then compress only essential files to save boot partition space
+    with console.status("[cyan]Downloading and compressing Waveshare ePaper library...[/cyan]"):
+        # Initialize sparse checkout
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--depth",
+                "1",
+                "--filter=blob:none",
+                "--no-checkout",
+                "--quiet",
+                "https://github.com/waveshareteam/e-Paper.git",
+                str(temp_waveshare),
+            ],
+            check=True,
+        )
+
+        # Configure sparse checkout for Python subdirectory only
+        subprocess.run(
+            ["git", "-C", str(temp_waveshare), "sparse-checkout", "init", "--cone"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(temp_waveshare),
+                "sparse-checkout",
+                "set",
+                "RaspberryPi_JetsonNano/python",
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        subprocess.run(
+            ["git", "-C", str(temp_waveshare), "checkout", "--quiet"],
+            check=True,
+        )
+
+        # Stage only essential files for compression
+        # Skip pic/ (example images) and examples/ (test scripts) to save space
+        python_dir = temp_waveshare / "RaspberryPi_JetsonNano" / "python"
+        temp_staging.mkdir(parents=True)
+        staging_dir = temp_staging / "waveshare-epd"
+        staging_dir.mkdir()
+
+        # Copy lib directory (the actual library code)
+        lib_dir = python_dir / "lib"
+        if lib_dir.exists():
+            shutil.copytree(lib_dir, staging_dir / "lib")
+
+        # Copy setup.py (needed for pip installation)
+        setup_file = python_dir / "setup.py"
+        if setup_file.exists():
+            shutil.copy2(setup_file, staging_dir / "setup.py")
+
+        # Create compressed tarball
+        subprocess.run(
+            [
+                "tar",
+                "-czf",
+                str(waveshare_tarball),
+                "-C",
+                str(temp_staging),
+                "waveshare-epd",
+            ],
+            check=True,
+        )
+
+        # Get compressed size for informational purposes
+        tarball_size_mb = waveshare_tarball.stat().st_size / (1024 * 1024)
+
+        # Clean up temp directories (use rm -rf for git clones with restricted permissions)
+        subprocess.run(["rm", "-rf", str(temp_waveshare)], check=True)
+        subprocess.run(["rm", "-rf", str(temp_staging)], check=True)
+
+    console.print(
+        f"[green]✓ Waveshare ePaper library compressed to boot partition "
+        f"({tarball_size_mb:.1f}MB)[/green]"
+    )
+
+
 def configure_dietpi_boot(  # noqa: C901
     device: str, config: dict[str, Any], os_key: str, device_key: str
 ) -> None:
     """Configure DietPi boot partition with dietpi.txt and dietpi-wifi.txt."""
     console.print()
     console.print("[cyan]Configuring DietPi boot partition...[/cyan]")
+
+    # Initialize config_file to None (will be set by copy_birdnetpi_config if config exists)
+    config_file: Path | None = None
 
     # Mount boot partition
     if platform.system() == "Darwin":
@@ -1494,13 +1622,20 @@ def configure_dietpi_boot(  # noqa: C901
         # Update configuration values
         updates = {
             "AUTO_SETUP_AUTOMATED": "1",  # Enable automated first-run setup
+            "AUTO_SETUP_INSTALL_SOFTWARE": "1",  # Required for Automation_Custom_Script.sh to run!
             "AUTO_SETUP_NET_HOSTNAME": config.get("hostname", "birdnetpi"),
             "AUTO_SETUP_GLOBAL_PASSWORD": config["admin_password"],
             "AUTO_SETUP_TIMEZONE": config.get("timezone", "UTC"),
             "AUTO_SETUP_LOCALE": "en_US.UTF-8",
             "AUTO_SETUP_KEYBOARD_LAYOUT": "us",  # Set keyboard layout
             "AUTO_SETUP_SSH_SERVER_INDEX": "-2",  # Enable OpenSSH (more reliable)
-            "CONFIG_BOOT_WAIT_FOR_NETWORK": "2",  # Wait for network (required)
+            # 1 = wait for network *up* (any interface), 2 = wait for *online*
+            # (network-online.target). We use 1 to avoid deadlocking boot when
+            # WiFi fails to re-associate on a warm reboot — the device should
+            # still come up, services retry on their own. The first-boot
+            # AUTO_SETUP_BOOT_WAIT_FOR_NETWORK=1 (DietPi's first-run flag)
+            # already gates the asset download, so we don't need 2 here.
+            "CONFIG_BOOT_WAIT_FOR_NETWORK": "1",
         }
 
         # Enable WiFi if configured
@@ -1567,7 +1702,7 @@ def configure_dietpi_boot(  # noqa: C901
         # Write updated dietpi.txt
         temp_dietpi_txt = Path("/tmp/dietpi.txt")
         temp_dietpi_txt.write_text("".join(new_lines))
-        subprocess.run(["sudo", "cp", str(temp_dietpi_txt), str(dietpi_txt_path)], check=True)
+        subprocess.run(["sudo", "cp", "-X", str(temp_dietpi_txt), str(dietpi_txt_path)], check=True)
         temp_dietpi_txt.unlink()
 
         console.print("[green]✓ Updated dietpi.txt[/green]")
@@ -1598,13 +1733,21 @@ def configure_dietpi_boot(  # noqa: C901
         if config.get("enable_wifi"):
             dietpi_wifi_path = boot_mount / "dietpi-wifi.txt"
             if dietpi_wifi_path.exists():
+                # aWIFI_KEYMGR is required for the wpa_supplicant.conf DietPi
+                # generates on first boot. Omitting it can produce a config
+                # that associates on first boot via fallbacks and then fails
+                # on warm reboot.
+                wifi_keymgr = config.get("wifi_auth", "WPA-PSK")
                 wifi_content = f"""# WiFi settings
 aWIFI_SSID[0]='{config["wifi_ssid"]}'
 aWIFI_KEY[0]='{config["wifi_password"]}'
+aWIFI_KEYMGR[0]='{wifi_keymgr}'
 """
                 temp_wifi = Path("/tmp/dietpi-wifi.txt")
                 temp_wifi.write_text(wifi_content)
-                subprocess.run(["sudo", "cp", str(temp_wifi), str(dietpi_wifi_path)], check=True)
+                subprocess.run(
+                    ["sudo", "cp", "-X", str(temp_wifi), str(dietpi_wifi_path)], check=True
+                )
                 temp_wifi.unlink()
                 console.print("[green]✓ Configured WiFi[/green]")
 
@@ -1635,14 +1778,14 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                 temp_config = Path("/tmp/dietpi_config_txt")
                 temp_config.write_text(config_content)
                 subprocess.run(
-                    ["sudo", "cp", str(temp_config), str(config_txt_path)],
+                    ["sudo", "cp", "-X", str(temp_config), str(config_txt_path)],
                     check=True,
                 )
                 temp_config.unlink()
                 console.print("[green]✓ SPI enabled for ePaper HAT (Raspberry Pi)[/green]")
 
             elif dietpi_env_path.exists():
-                # RK3588-based SBC (OrangePi 5/5+/5 Pro, ROCK 5B) - use device tree overlay
+                # SBC with dietpiEnv.txt - use device tree overlay
                 result = subprocess.run(
                     ["sudo", "cat", str(dietpi_env_path)],
                     capture_output=True,
@@ -1652,43 +1795,65 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                 env_content = result.stdout
 
                 # Determine which SPI overlay to use based on device
-                # Orange Pi 5 series: SPI4-M0 is available on GPIO header
-                # ROCK 5B: SPI1-M1 or SPI3-M1 depending on configuration
-                spi_overlay = "rk3588-spi4-m0-cs1-spidev"
-                if device_key == "rock5b":
-                    spi_overlay = "rk3588-spi1-m1-cs0-spidev"
+                # Orange Pi Zero 2W: Allwinner H618 SPI1
+                # Orange Pi 5 series: RK3588 SPI4-M2-CS0 (verified working)
+                # ROCK 5B: RK3588 SPI1-M1 or SPI3-M1 depending on configuration
+                #
+                # NOTE: DietPi automatically prepends overlay_prefix from dietpiEnv.txt
+                # so overlay names should NOT include the chip prefix
+                spi_overlay = None
+                if device_key == "orange_pi_0w2":
+                    spi_overlay = "spi-spidev"  # Allwinner H618
+                elif device_key == "rock_5b":
+                    spi_overlay = "spi1-m1-cs0-spidev"  # RK3588 (prefix auto-prepended)
+                elif device_key in ["orange_pi_5_plus", "orange_pi_5_pro"]:
+                    spi_overlay = "spi4-m2-cs0-spidev"  # RK3588 M2-CS0 (prefix auto-prepended)
 
-                # Check if overlays line exists
-                overlays_added = False
-                new_lines = []
-                for line in env_content.split("\n"):
-                    if line.startswith("overlays="):
-                        # Add SPI overlay to existing overlays line
-                        if spi_overlay not in line:
-                            line = line.rstrip() + f" {spi_overlay}"
-                        overlays_added = True
-                    new_lines.append(line)
+                if spi_overlay:
+                    # Check if overlays line exists
+                    overlays_added = False
+                    new_lines = []
+                    for line in env_content.split("\n"):
+                        if line.startswith("overlays="):
+                            # Add SPI overlay to existing overlays line
+                            if spi_overlay not in line:
+                                line = line.rstrip() + f" {spi_overlay}"
+                            overlays_added = True
+                        new_lines.append(line)
 
-                # If no overlays line exists, add it
-                if not overlays_added:
-                    new_lines.append(f"overlays={spi_overlay}")
+                    # If no overlays line exists, add it
+                    if not overlays_added:
+                        new_lines.append(f"overlays={spi_overlay}")
 
-                # Add spidev bus parameter if not present
-                if "param_spidev_spi_bus=" not in env_content:
-                    new_lines.append("param_spidev_spi_bus=0")
+                    # Add spidev bus parameter if not present
+                    if "param_spidev_spi_bus=" not in env_content:
+                        new_lines.append("param_spidev_spi_bus=0")
 
-                env_content = "\n".join(new_lines)
+                    # Add max frequency parameter for RK3588 platforms (required)
+                    if device_key in ["orange_pi_5_plus", "orange_pi_5_pro", "rock_5b"]:
+                        if "param_spidev_max_freq=" not in env_content:
+                            new_lines.append("param_spidev_max_freq=100000000")
 
-                temp_env = Path("/tmp/dietpi_env_txt")
-                temp_env.write_text(env_content)
-                subprocess.run(
-                    ["sudo", "cp", str(temp_env), str(dietpi_env_path)],
-                    check=True,
-                )
-                temp_env.unlink()
-                console.print(
-                    f"[green]✓ SPI enabled for ePaper HAT (RK3588 overlay: {spi_overlay})[/green]"
-                )
+                    env_content = "\n".join(new_lines)
+
+                    temp_env = Path("/tmp/dietpi_env_txt")
+                    temp_env.write_text(env_content)
+                    subprocess.run(
+                        ["sudo", "cp", "-X", str(temp_env), str(dietpi_env_path)],
+                        check=True,
+                    )
+                    temp_env.unlink()
+
+                    # Determine chip description for message
+                    chip_desc = "Allwinner H618" if device_key == "orange_pi_0w2" else "RK3588"
+                    msg = f"✓ SPI enabled for ePaper HAT ({chip_desc} overlay: {spi_overlay})"
+                    console.print(f"[green]{msg}[/green]")
+
+                    # Download Waveshare library for offline installation
+                    download_waveshare_library(boot_mount)
+                else:
+                    msg = "Note: SPI configuration for this device not yet implemented"
+                    console.print(f"[yellow]{msg}[/yellow]")
 
             else:
                 # Other SBC types not yet implemented
@@ -1697,12 +1862,244 @@ aWIFI_KEY[0]='{config["wifi_password"]}'
                 )
 
         # Copy installer script if requested (handles preservation for DietPi automatically)
-        copy_installer_script(boot_mount, config, os_key, device_key)
+        modified_install_script = copy_installer_script(boot_mount, config, os_key, device_key)
 
         # Copy BirdNET-Pi pre-configuration file if any settings provided
-        copy_birdnetpi_config(boot_mount, config)
+        config_file = copy_birdnetpi_config(boot_mount, config, os_key, device_key)
+
+        # CRITICAL: Also copy install.sh and config to rootfs partition
+        # The DIETPISETUP partition (boot_mount) will be deleted after first boot
+        # So we must also place install.sh and config on the persistent rootfs partition
+        if config.get("copy_installer") and modified_install_script:
+            console.print("[cyan]Copying install.sh to rootfs partition...[/cyan]")
+
+            # Mount rootfs partition (usually partition 2 on DietPi)
+            rootfs_mount = None
+            rootfs_partition = None
+
+            try:
+                if platform.system() == "Darwin":
+                    # On macOS, use anylinuxfs to mount the ext4 rootfs partition
+                    # Check if anylinuxfs is installed
+                    anylinuxfs_path = shutil.which("anylinuxfs")
+                    mount_result = None
+                    rootfs_partition_name = None
+                    volumes_path = Path("/Volumes")
+                    initial_volumes: set[Path] = set()
+
+                    if not anylinuxfs_path:
+                        console.print(
+                            "[yellow]anylinuxfs not found - skipping rootfs mount[/yellow]"
+                        )
+                        console.print(
+                            "[yellow]Automation scripts will preserve "
+                            "install.sh during first boot[/yellow]"
+                        )
+                    else:
+                        # Find the Linux Filesystem partition (rootfs)
+                        # On Orange Pi 5 Pro: partition 1 is rootfs, partition 2 is DIETPISETUP
+                        rootfs_partition_name = f"{device}s1"
+
+                        console.print(
+                            f"[cyan]Mounting {rootfs_partition_name} using anylinuxfs...[/cyan]"
+                        )
+                        console.print(
+                            "[dim]This may take 10-15 seconds to start the microVM...[/dim]"
+                        )
+
+                        # Unmount any existing anylinuxfs mount first
+                        subprocess.run(
+                            ["sudo", "anylinuxfs", "unmount"],
+                            capture_output=True,
+                            check=False,
+                            timeout=10,
+                        )
+                        time.sleep(2)
+
+                        # Get list of volumes BEFORE anylinuxfs mount
+                        initial_volumes = (
+                            set(volumes_path.iterdir()) if volumes_path.exists() else set()
+                        )
+
+                        # Mount with anylinuxfs
+                        mount_result = subprocess.run(
+                            ["sudo", "anylinuxfs", rootfs_partition_name, "-w", "false"],
+                            capture_output=False,  # Allow password prompt
+                            check=False,
+                        )
+
+                    if anylinuxfs_path and mount_result and mount_result.returncode == 0:
+                        # Wait for mount to appear in /Volumes
+                        console.print("[dim]Waiting for mount to appear...[/dim]")
+
+                        for attempt in range(60):
+                            time.sleep(1)
+
+                            # Find new volumes that appeared after anylinuxfs mount
+                            current_volumes = (
+                                set(volumes_path.iterdir()) if volumes_path.exists() else set()
+                            )
+                            new_volumes = current_volumes - initial_volumes
+
+                            # Look for a new volume that looks like a Linux filesystem
+                            for potential_mount in new_volumes:
+                                if potential_mount.is_dir():
+                                    # Check if it looks like a rootfs (has /etc, /root, /usr)
+                                    if (
+                                        (potential_mount / "etc").exists()
+                                        and (potential_mount / "root").exists()
+                                        and (potential_mount / "usr").exists()
+                                    ):
+                                        rootfs_mount = potential_mount
+                                        rootfs_partition = rootfs_partition_name
+                                        break
+
+                            if rootfs_mount:
+                                break
+
+                            if attempt % 5 == 0 and attempt > 0:
+                                console.print(f"[dim]Still waiting... ({attempt}s)[/dim]")
+
+                        if rootfs_mount and rootfs_mount.exists():
+                            console.print(f"[green]✓ Mounted at {rootfs_mount}[/green]")
+
+                            # Ensure /root directory exists on rootfs
+                            root_dir = rootfs_mount / "root"
+                            subprocess.run(["sudo", "mkdir", "-p", str(root_dir)], check=True)
+
+                            # Copy modified install.sh to /root on rootfs
+                            # Use dd to avoid extended attributes issues with macOS
+                            install_dest = root_dir / "install.sh"
+                            subprocess.run(
+                                [
+                                    "sudo",
+                                    "dd",
+                                    f"if={modified_install_script}",
+                                    f"of={install_dest}",
+                                    "bs=1m",
+                                ],
+                                check=True,
+                                capture_output=True,
+                            )
+                            subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
+
+                            console.print(
+                                "[green]✓ install.sh copied to rootfs:/root/install.sh[/green]"
+                            )
+
+                            # Also copy config file if it was created
+                            if config_file and config_file.exists():
+                                config_dest = root_dir / "birdnetpi_config.json"
+                                subprocess.run(
+                                    [
+                                        "sudo",
+                                        "dd",
+                                        f"if={config_file}",
+                                        f"of={config_dest}",
+                                        "bs=1m",
+                                    ],
+                                    check=True,
+                                    capture_output=True,
+                                )
+                                console.print(
+                                    "[green]✓ birdnetpi_config.json copied to "
+                                    "rootfs:/root/birdnetpi_config.json[/green]"
+                                )
+
+                            # Also copy Waveshare tarball if it was created
+                            waveshare_tarball = boot_mount / "waveshare-epd.tar.gz"
+                            if waveshare_tarball.exists():
+                                waveshare_dest = root_dir / "waveshare-epd.tar.gz"
+                                subprocess.run(
+                                    [
+                                        "sudo",
+                                        "dd",
+                                        f"if={waveshare_tarball}",
+                                        f"of={waveshare_dest}",
+                                        "bs=1m",
+                                    ],
+                                    check=True,
+                                    capture_output=True,
+                                )
+                                console.print(
+                                    "[green]✓ waveshare-epd.tar.gz copied to "
+                                    "rootfs:/root/waveshare-epd.tar.gz[/green]"
+                                )
+
+                            console.print(
+                                "[dim]Files persist after DIETPISETUP partition deletion[/dim]"
+                            )
+                        else:
+                            console.print(
+                                "[yellow]Could not find anylinuxfs mount after 60s[/yellow]"
+                            )
+                            console.print(
+                                "[yellow]Automation scripts will preserve "
+                                "install.sh during first boot[/yellow]"
+                            )
+                    elif anylinuxfs_path:
+                        console.print(
+                            "[yellow]anylinuxfs mount failed - using boot partition only[/yellow]"
+                        )
+                        console.print(
+                            "[yellow]Automation scripts will preserve "
+                            "install.sh during first boot[/yellow]"
+                        )
+                else:
+                    # On Linux, mount partition 2 (rootfs)
+                    rootfs_partition = f"{device}2"
+                    rootfs_mount = Path("/mnt/dietpi_rootfs")
+                    rootfs_mount.mkdir(parents=True, exist_ok=True)
+
+                    subprocess.run(
+                        ["sudo", "mount", rootfs_partition, str(rootfs_mount)], check=True
+                    )
+
+                    # Ensure /root directory exists on rootfs
+                    root_dir = rootfs_mount / "root"
+                    subprocess.run(["sudo", "mkdir", "-p", str(root_dir)], check=True)
+
+                    # Copy modified install.sh to /root on rootfs
+                    install_dest = root_dir / "install.sh"
+                    subprocess.run(
+                        ["sudo", "cp", "-X", str(modified_install_script), str(install_dest)],
+                        check=True,
+                    )
+                    subprocess.run(["sudo", "chmod", "+x", str(install_dest)], check=True)
+
+                    console.print("[green]✓ install.sh copied to rootfs:/root/install.sh[/green]")
+                    console.print("[dim]Persists after DIETPISETUP partition deletion[/dim]")
+
+            finally:
+                # Unmount rootfs if we mounted it
+                if rootfs_mount and rootfs_partition:
+                    if platform.system() == "Darwin":
+                        # Unmount anylinuxfs
+                        console.print("[cyan]Unmounting anylinuxfs...[/cyan]")
+                        try:
+                            subprocess.run(
+                                ["sudo", "anylinuxfs", "unmount"],
+                                check=True,
+                                timeout=10,
+                                capture_output=True,
+                            )
+                            console.print("[green]✓ anylinuxfs unmounted[/green]")
+                        except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+                            # Try force stop if unmount fails
+                            subprocess.run(
+                                ["sudo", "anylinuxfs", "stop"],
+                                check=False,
+                                timeout=5,
+                                capture_output=True,
+                            )
+                    else:
+                        subprocess.run(["sudo", "umount", str(rootfs_mount)], check=False)
 
     finally:
+        # Clean up temporary config file if it exists
+        if config_file and config_file.exists():
+            config_file.unlink()
+
         # Unmount
         console.print("[cyan]Unmounting boot partition...[/cyan]")
         if platform.system() == "Darwin":
@@ -1805,7 +2202,7 @@ country = "US"
         temp_toml = Path("/tmp/birdnetpi_custom.toml")
         temp_toml.write_text(toml_content)
         subprocess.run(
-            ["sudo", "cp", str(temp_toml), str(boot_mount / "custom.toml")],
+            ["sudo", "cp", "-X", str(temp_toml), str(boot_mount / "custom.toml")],
             check=True,
         )
         temp_toml.unlink()
@@ -1882,7 +2279,7 @@ exit 0
             # Copy to boot partition
             firstrun_dest = boot_mount / "firstrun.sh"
             subprocess.run(
-                ["sudo", "cp", str(temp_firstrun), str(firstrun_dest)],
+                ["sudo", "cp", "-X", str(temp_firstrun), str(firstrun_dest)],
                 check=True,
             )
             # Make executable
@@ -1910,7 +2307,7 @@ exit 0
                 temp_cmdline = Path("/tmp/birdnetpi_cmdline.txt")
                 temp_cmdline.write_text(cmdline)
                 subprocess.run(
-                    ["sudo", "cp", str(temp_cmdline), str(cmdline_path)],
+                    ["sudo", "cp", "-X", str(temp_cmdline), str(cmdline_path)],
                     check=True,
                 )
                 temp_cmdline.unlink()
@@ -1951,74 +2348,14 @@ exit 0
             temp_config = Path("/tmp/birdnetpi_config_txt")
             temp_config.write_text(config_content)
             subprocess.run(
-                ["sudo", "cp", str(temp_config), str(config_txt_path)],
+                ["sudo", "cp", "-X", str(temp_config), str(config_txt_path)],
                 check=True,
             )
             temp_config.unlink()
             console.print("[green]✓ SPI enabled for ePaper HAT[/green]")
 
-            # Clone Waveshare ePaper library to boot partition for offline installation
-            console.print()
-            waveshare_dest = boot_mount / "waveshare-epd"
-            temp_waveshare = Path("/tmp/waveshare_clone")
-
-            # Remove old temp clone if it exists
-            if temp_waveshare.exists():
-                shutil.rmtree(temp_waveshare)
-
-            # Clone only the Python subdirectory using sparse-checkout (~45MB vs full repo)
-            # This is small enough to fit on the boot partition
-            with console.status(
-                "[cyan]Downloading Waveshare ePaper library "
-                "(Python subdirectory, ~6MB transfer)...[/cyan]"
-            ):
-                # Initialize sparse checkout
-                subprocess.run(
-                    [
-                        "git",
-                        "clone",
-                        "--depth",
-                        "1",
-                        "--filter=blob:none",
-                        "--no-checkout",
-                        "--quiet",
-                        "https://github.com/waveshareteam/e-Paper.git",
-                        str(temp_waveshare),
-                    ],
-                    check=True,
-                )
-
-                # Configure sparse checkout for Python subdirectory only
-                subprocess.run(
-                    ["git", "-C", str(temp_waveshare), "sparse-checkout", "init", "--cone"],
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                )
-                subprocess.run(
-                    [
-                        "git",
-                        "-C",
-                        str(temp_waveshare),
-                        "sparse-checkout",
-                        "set",
-                        "RaspberryPi_JetsonNano/python",
-                    ],
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                )
-                subprocess.run(
-                    ["git", "-C", str(temp_waveshare), "checkout", "--quiet"],
-                    check=True,
-                )
-
-                # Copy only the Python subdirectory to boot partition
-                python_dir = temp_waveshare / "RaspberryPi_JetsonNano" / "python"
-                subprocess.run(
-                    ["sudo", "cp", "-r", str(python_dir), str(waveshare_dest)],
-                    check=True,
-                )
-                shutil.rmtree(temp_waveshare)
-            console.print("[green]✓ Waveshare ePaper library downloaded to boot partition[/green]")
+            # Download Waveshare library for offline installation
+            download_waveshare_library(boot_mount)
 
         # Copy installer script if requested
         copy_installer_script(boot_mount, config, os_key, device_key)
@@ -2145,7 +2482,7 @@ fi
 
             # Copy to boot partition
             subprocess.run(
-                ["sudo", "cp", "-r", str(temp_clone), str(lrp_dest)],
+                ["sudo", "cp", "-rX", str(temp_clone), str(lrp_dest)],
                 check=True,
             )
 
@@ -2182,7 +2519,7 @@ echo "After shutdown, move the SD card to your Le Potato and boot it."
             temp_helper = Path("/tmp/lepotato_setup.sh")
             temp_helper.write_text(helper_script)
             subprocess.run(
-                ["sudo", "cp", str(temp_helper), str(boot_mount / "lepotato_setup.sh")],
+                ["sudo", "cp", "-X", str(temp_helper), str(boot_mount / "lepotato_setup.sh")],
                 check=True,
             )
             # Make executable
@@ -2234,7 +2571,7 @@ https://github.com/libre-computer-project/libretech-raspbian-portability
             temp_readme = Path("/tmp/birdnetpi_lepotato_readme.txt")
             temp_readme.write_text(readme_content)
             subprocess.run(
-                ["sudo", "cp", str(temp_readme), str(boot_mount / "LE_POTATO_README.txt")],
+                ["sudo", "cp", "-X", str(temp_readme), str(boot_mount / "LE_POTATO_README.txt")],
                 check=True,
             )
             temp_readme.unlink()
@@ -2258,7 +2595,7 @@ https://github.com/libre-computer-project/libretech-raspbian-portability
 
 def run_configuration_wizard() -> dict[str, Any] | None:
     """Run the Textual TUI wizard to gather configuration."""
-    app = FlasherWizardApp(OS_IMAGES, DEVICE_PROPERTIES, OS_PROPERTIES)
+    app = FlasherWizardApp(OS_PROPERTIES)
     return app.run()
 
 
@@ -2450,10 +2787,25 @@ def main(save_config_flag: bool, device_index: int | None, device_type: str | No
         os_label = "Armbian" if is_armbian else "DietPi"
         summary_parts.append(f"Native {os_label}: [green]Configured and ready[/green]\n")
 
-        # Check if anylinuxfs was used
-        if shutil.which("anylinuxfs"):
+        # DietPi has special installer preservation
+        if is_dietpi:
+            caps = get_combined_capabilities(os_key, device_key)
+            install_path = caps.get("install_sh_path", "/root/install.sh")
             summary_parts.append(
-                "[dim]Insert the SD card into your Le Potato and power it on.\n"
+                f"[dim]Insert the SD card and power on your device.\n"
+                f"First boot will configure the system and preserve install.sh to:\n"
+                f"  [cyan]{install_path}[/cyan]\n\n"
+                f"After first boot, SSH in and run:\n"
+                f"  [cyan]sudo bash {install_path}[/cyan]\n\n"
+                f"[yellow]Troubleshooting (if install.sh is missing):[/yellow]\n"
+                f"  • Check logs: [cyan]cat /var/log/birdnetpi_*.log[/cyan]\n"
+                f"  • Read [cyan]BIRDNETPI_README.txt[/cyan] on boot partition\n"
+                f"  • Manual installation instructions in README[/dim]"
+            )
+        # Check if anylinuxfs was used for Armbian
+        elif shutil.which("anylinuxfs"):
+            summary_parts.append(
+                "[dim]Insert the SD card into your device and power it on.\n"
                 "First boot will apply pre-configuration automatically.\n\n"
                 f"SSH in as [cyan]{config['admin_user']}[/cyan] and run:\n"
                 "  [cyan]bash /boot/install.sh[/cyan]\n\n"
@@ -2462,7 +2814,7 @@ def main(save_config_flag: bool, device_index: int | None, device_type: str | No
             )
         else:
             summary_parts.append(
-                "[dim]Insert the SD card into your Le Potato and power it on.\n"
+                "[dim]Insert the SD card into your device and power it on.\n"
                 "[yellow]anylinuxfs not installed - using interactive setup:[/yellow]\n"
                 "  1. Create a root password\n"
                 "  2. Create a user account\n"
