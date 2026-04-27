@@ -2151,13 +2151,29 @@ def configure_boot_partition(  # noqa: C901
 
     # Mount bootfs partition
     if platform.system() == "Darwin":
-        # On macOS, the partition auto-mounts to /Volumes/bootfs
+        # On macOS, the partition auto-mounts to /Volumes/bootfs.
+        # Right after `dd`, macOS may not have re-enumerated partitions yet
+        # (especially on slow SD writers), so /dev/disk4s1 doesn't exist for
+        # a few seconds. Poll for the partition to appear before mounting.
+        import time
+
         boot_mount = Path("/Volumes/bootfs")
         if not boot_mount.exists():
-            subprocess.run(["diskutil", "mount", f"{device}s1"], check=True)
-            # Wait for mount
-            import time
-
+            partition_path = Path(f"{device}s1")
+            for _ in range(30):  # up to ~30s
+                if partition_path.exists():
+                    break
+                time.sleep(1)
+            else:
+                console.print(
+                    f"[yellow]Warning: {partition_path} did not appear within 30s; "
+                    f"trying diskutil mountDisk on the whole device instead.[/yellow]"
+                )
+                # Fallback: mount all volumes on the disk; macOS will rescan.
+                subprocess.run(["diskutil", "mountDisk", device], check=True)
+            if not boot_mount.exists():
+                subprocess.run(["diskutil", "mount", str(partition_path)], check=True)
+            # Give macOS a moment to surface the mount under /Volumes
             time.sleep(2)
     else:
         # On Linux, manually mount
