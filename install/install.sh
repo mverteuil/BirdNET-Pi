@@ -12,6 +12,8 @@
 set -e
 
 # Configuration
+# NOTE: These defaults are substituted by flash_sdcard.py at flash time
+# based on the configured repo URL and branch in the flasher wizard
 REPO_URL="${BIRDNETPI_REPO_URL:-https://github.com/mverteuil/BirdNET-Pi.git}"
 BRANCH="${BIRDNETPI_BRANCH:-main}"
 INSTALL_DIR="/opt/birdnetpi"
@@ -87,19 +89,96 @@ echo ""
 
 # Enable SPI interface early (required for e-paper HAT detection)
 # Must reboot immediately for SPI devices to appear at /dev/spidev*
-BOOT_CONFIG="/boot/firmware/config.txt"
-if [ -f "$BOOT_CONFIG" ]; then
-    echo "Checking SPI interface..."
-    if grep -q "^dtparam=spi=on" "$BOOT_CONFIG"; then
-        echo "SPI already enabled"
-    else
-        echo "Enabling SPI interface..."
-        # Uncomment if commented, or add if missing
-        if grep -q "^#dtparam=spi=on" "$BOOT_CONFIG"; then
-            sudo sed -i 's/^#dtparam=spi=on/dtparam=spi=on/' "$BOOT_CONFIG"
+echo "Checking SPI interface..."
+
+# Check if SPI devices already exist
+if ls /dev/spidev* &>/dev/null; then
+    echo "SPI already enabled (devices found)"
+else
+    SPI_ENABLED=false
+
+    # Raspberry Pi OS: /boot/firmware/config.txt
+    BOOT_CONFIG="/boot/firmware/config.txt"
+    if [ -f "$BOOT_CONFIG" ]; then
+        echo "Detected Raspberry Pi OS, checking $BOOT_CONFIG..."
+        if grep -q "^dtparam=spi=on" "$BOOT_CONFIG"; then
+            SPI_ENABLED=true
         else
-            echo "dtparam=spi=on" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+            echo "Enabling SPI in $BOOT_CONFIG..."
+            # Uncomment if commented, or add if missing
+            if grep -q "^#dtparam=spi=on" "$BOOT_CONFIG"; then
+                sudo sed -i 's/^#dtparam=spi=on/dtparam=spi=on/' "$BOOT_CONFIG"
+            else
+                echo "dtparam=spi=on" | sudo tee -a "$BOOT_CONFIG" > /dev/null
+            fi
+            SPI_ENABLED=true
         fi
+    fi
+
+    # DietPi/Armbian on Orange Pi: armbianEnv.txt / dietpiEnv.txt /
+    # orangepiEnv.txt, in either /boot or /boot/firmware (Trixie images
+    # vary by board/version).
+    for ARMBIAN_CONFIG in \
+        "/boot/armbianEnv.txt" \
+        "/boot/firmware/armbianEnv.txt" \
+        "/boot/dietpiEnv.txt" \
+        "/boot/firmware/dietpiEnv.txt" \
+        "/boot/orangepiEnv.txt" \
+        "/boot/firmware/orangepiEnv.txt"; do
+        if [ -f "$ARMBIAN_CONFIG" ]; then
+            echo "Detected Armbian/DietPi, checking $ARMBIAN_CONFIG..."
+
+            # Check for any SPI overlay (platform-specific like rk3588-spi* or generic spi-spidev)
+            if grep -q "^overlays=.*spi" "$ARMBIAN_CONFIG"; then
+                echo "SPI overlay found in $ARMBIAN_CONFIG"
+
+                # Check if overlay has chip prefix (e.g., rk3588-) which needs to be removed
+                # DietPi/Armbian automatically prepend the prefix from overlay_prefix config
+                if grep -q "^overlays=.*rk3588-spi" "$ARMBIAN_CONFIG"; then
+                    echo "Fixing RK3588 SPI overlay format (removing chip prefix)..."
+                    # Replace rk3588-spi4-m0-cs1-spidev with spi4-m2-cs0-spidev (M2-CS0 is the working variant)
+                    sudo sed -i 's/rk3588-spi4-[^ ]*/spi4-m2-cs0-spidev/' "$ARMBIAN_CONFIG"
+                    SPI_ENABLED=true
+                fi
+
+                # Verify param_spidev_spi_bus parameter exists
+                if ! grep -q "^param_spidev_spi_bus=" "$ARMBIAN_CONFIG"; then
+                    echo "Adding param_spidev_spi_bus=0 to $ARMBIAN_CONFIG..."
+                    echo "param_spidev_spi_bus=0" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+                    SPI_ENABLED=true
+                fi
+
+                # Verify param_spidev_max_freq parameter exists (required for RK3588)
+                if ! grep -q "^param_spidev_max_freq=" "$ARMBIAN_CONFIG"; then
+                    echo "Adding param_spidev_max_freq=100000000 to $ARMBIAN_CONFIG..."
+                    echo "param_spidev_max_freq=100000000" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+                    SPI_ENABLED=true
+                fi
+
+                if [ "$SPI_ENABLED" != true ]; then
+                    echo "SPI already configured correctly in $ARMBIAN_CONFIG"
+                fi
+            else
+                echo "Enabling SPI in $ARMBIAN_CONFIG..."
+                # Check if overlays line exists
+                if grep -q "^overlays=" "$ARMBIAN_CONFIG"; then
+                    # Add spi-spidev to existing overlays
+                    sudo sed -i 's/^overlays=\(.*\)/overlays=\1 spi-spidev/' "$ARMBIAN_CONFIG"
+                else
+                    # Create new overlays line
+                    echo "overlays=spi-spidev" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+                fi
+
+                # Add param_spidev_spi_bus parameter
+                echo "param_spidev_spi_bus=0" | sudo tee -a "$ARMBIAN_CONFIG" > /dev/null
+
+                SPI_ENABLED=true
+            fi
+            break
+        fi
+    done
+
+    if [ "$SPI_ENABLED" = true ]; then
         echo ""
         echo "========================================"
         echo "SPI interface enabled!"
@@ -114,13 +193,20 @@ if [ -f "$BOOT_CONFIG" ]; then
         read -r -p "Press Enter to reboot now, or Ctrl+C to cancel..."
         sudo reboot
         exit 0
+    else
+        echo "WARNING: Could not detect system type to enable SPI"
+        echo "SPI may need to be enabled manually for e-paper HAT support"
     fi
 fi
 
 # Bootstrap the environment
 echo "Installing prerequisites..."
 sudo apt-get update
-sudo apt-get install -y git python3.11 python3.11-venv python3-pip build-essential python3.11-dev
+# Minimal build dependencies (no perl, make, or other build-essential bloat)
+# Don't apt-install python3.11 directly — it's only available on Bookworm
+# (DietPi) and not on Trixie (Armbian). uv will provision the right Python
+# from pyproject.toml's `requires-python = "==3.11.*"` at venv-create time.
+sudo apt-get install -y git python3-pip gcc libc6-dev libportaudio2 libsndfile1
 
 # Wait for DNS to settle after apt operations
 sleep 2
@@ -148,12 +234,60 @@ else
     # User doesn't exist - create with /opt/birdnetpi as home (no -m since dir exists)
     sudo useradd -d "$INSTALL_DIR" -s /bin/bash birdnetpi
 fi
+
+# Create spi and gpio groups if they don't exist (needed for DietPi/Orange Pi)
+getent group spi >/dev/null || sudo groupadd spi
+getent group gpio >/dev/null || sudo groupadd gpio
+
 sudo usermod -aG audio,video,dialout,spi,gpio birdnetpi
 sudo chown birdnetpi:birdnetpi "$INSTALL_DIR"
+
+# Grant birdnetpi user limited sudo access for systemctl commands
+# This allows the web UI to query and control services without root access
+echo "Configuring sudoers for service management..."
+cat <<'EOF' | sudo tee /etc/sudoers.d/birdnetpi-systemctl > /dev/null
+# Allow birdnetpi user to query and control birdnetpi services
+# This is needed for the web UI to show service status
+birdnetpi ALL=(root) NOPASSWD: /usr/bin/systemctl show birdnetpi-* *, \
+                              /usr/bin/systemctl is-active birdnetpi-*, \
+                              /usr/bin/systemctl start birdnetpi-*, \
+                              /usr/bin/systemctl stop birdnetpi-*, \
+                              /usr/bin/systemctl restart birdnetpi-*, \
+                              /usr/bin/systemctl enable birdnetpi-*, \
+                              /usr/bin/systemctl disable birdnetpi-*, \
+                              /usr/bin/systemctl daemon-reload, \
+                              /usr/bin/systemctl show caddy *, \
+                              /usr/bin/systemctl is-active caddy, \
+                              /usr/bin/systemctl start caddy, \
+                              /usr/bin/systemctl stop caddy, \
+                              /usr/bin/systemctl restart caddy, \
+                              /usr/bin/systemctl show redis *, \
+                              /usr/bin/systemctl is-active redis, \
+                              /usr/bin/systemctl start redis, \
+                              /usr/bin/systemctl restart redis, \
+                              /usr/bin/systemctl reboot
+EOF
+sudo chmod 0440 /etc/sudoers.d/birdnetpi-systemctl
 
 # Clone repository directly to installation directory as birdnetpi user
 echo "Cloning repository..."
 sudo -u birdnetpi git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
+
+# Copy config file to installation directory so the birdnetpi user can read it.
+# Checked locations:
+#   /root/                — DietPi preserves it here on first boot
+#   /boot/firmware/       — RPi OS layout
+#   /boot/                — Armbian / generic SBC layout
+# Use sudo for the test too, because /root is mode 700 and a non-root invoker
+# of install.sh would otherwise skip the file silently.
+for CONFIG_SRC in /root/birdnetpi_config.json /boot/firmware/birdnetpi_config.json /boot/birdnetpi_config.json; do
+    if sudo test -f "$CONFIG_SRC"; then
+        echo "Copying configuration file from $CONFIG_SRC..."
+        sudo cp "$CONFIG_SRC" "$INSTALL_DIR/birdnetpi_config.json"
+        sudo chown birdnetpi:birdnetpi "$INSTALL_DIR/birdnetpi_config.json"
+        break
+    fi
+done
 
 # Install uv package manager system-wide to /opt/uv
 echo "Installing uv package manager..."
@@ -195,33 +329,87 @@ done
 # Give DNS resolver a moment to stabilize
 sleep 2
 
-# If Waveshare library was downloaded to boot partition, copy to writable location
-WAVESHARE_BOOT_PATH="/boot/firmware/waveshare-epd"
+# Create cache directory for uv in tmpfs
+# Using /tmp instead of /dev/shm as /dev/shm is often too small (512MB default)
+# /tmp is larger and still avoids excessive SD card writes on most systems
+UV_CACHE_DIR="/tmp/uv-cache"
+sudo mkdir -p "$UV_CACHE_DIR"
+sudo chown birdnetpi:birdnetpi "$UV_CACHE_DIR"
+
+# If Waveshare library was downloaded to boot partition, extract/copy to writable location
+# Check multiple possible locations as boot partition mount varies by system
+WAVESHARE_TARBALL_LOCATIONS=(
+    "/boot/firmware/waveshare-epd.tar.gz"
+    "/boot/waveshare-epd.tar.gz"
+    "/root/waveshare-epd.tar.gz"  # Fallback location from rootfs copy
+)
+WAVESHARE_DIR_LOCATIONS=(
+    "/boot/firmware/waveshare-epd"
+    "/boot/waveshare-epd"
+    "/root/waveshare-epd"
+)
 WAVESHARE_LIB_PATH="/opt/birdnetpi/waveshare-epd"
-if [ -d "$WAVESHARE_BOOT_PATH" ] && [ -n "$EPAPER_EXTRAS" ]; then
-    echo "Using pre-downloaded Waveshare library from boot partition..."
+WAVESHARE_FOUND=""
 
-    # Copy from boot partition (FAT32, root-owned) to writable location
-    # This is needed because uv needs write access to build the package
-    sudo cp -r "$WAVESHARE_BOOT_PATH" "$WAVESHARE_LIB_PATH"
-    sudo chown -R birdnetpi:birdnetpi "$WAVESHARE_LIB_PATH"
+if [ -n "$EPAPER_EXTRAS" ]; then
+    # Try to find tarball first (preferred)
+    for tarball_path in "${WAVESHARE_TARBALL_LOCATIONS[@]}"; do
+        if [ -f "$tarball_path" ]; then
+            echo "Extracting pre-downloaded Waveshare library from $tarball_path..."
+            sudo mkdir -p /opt/birdnetpi
+            sudo tar -xzf "$tarball_path" -C /opt/birdnetpi
+            sudo chown -R birdnetpi:birdnetpi "$WAVESHARE_LIB_PATH"
+            WAVESHARE_FOUND="yes"
+            break
+        fi
+    done
 
-    cd "$INSTALL_DIR"
+    # Fall back to uncompressed directory (backward compatibility)
+    if [ -z "$WAVESHARE_FOUND" ]; then
+        for dir_path in "${WAVESHARE_DIR_LOCATIONS[@]}"; do
+            if [ -d "$dir_path" ]; then
+                echo "Copying pre-downloaded Waveshare library from $dir_path..."
+                sudo cp -r "$dir_path" "$WAVESHARE_LIB_PATH"
+                sudo chown -R birdnetpi:birdnetpi "$WAVESHARE_LIB_PATH"
+                WAVESHARE_FOUND="yes"
+                break
+            fi
+        done
+    fi
 
-    # Patch pyproject.toml to use the copied local path instead of git URL
-    sudo -u birdnetpi sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/opt/birdnetpi/waveshare-epd"}|' pyproject.toml
+    if [ -n "$WAVESHARE_FOUND" ]; then
+        cd "$INSTALL_DIR"
 
-    # Regenerate lockfile since we changed the source
-    echo "Regenerating lockfile for local Waveshare library..."
-    sudo -u birdnetpi UV_HTTP_TIMEOUT=300 /opt/uv/uv lock --quiet
+        # Patch pyproject.toml to use the local path instead of git URL
+        # Use a temp script to avoid quote escaping issues with su -c wrapper
+        cat > /tmp/patch_pyproject.sh << 'SEDEOF'
+#!/bin/sh
+cd /opt/birdnetpi
+sed -i 's|waveshare-epd = {git = "https://github.com/waveshareteam/e-Paper.git", subdirectory = "RaspberryPi_JetsonNano/python"}|waveshare-epd = {path = "/opt/birdnetpi/waveshare-epd"}|' pyproject.toml
+SEDEOF
+        chmod +x /tmp/patch_pyproject.sh
+        sudo -u birdnetpi /tmp/patch_pyproject.sh
+        rm -f /tmp/patch_pyproject.sh
 
-    echo "✓ Configured to use local Waveshare library"
+        # Regenerate lockfile with the local path (respects the patched pyproject.toml)
+        sudo -u birdnetpi UV_CACHE_DIR="$UV_CACHE_DIR" /opt/uv/uv lock
+
+        # Patch Waveshare library to support Orange Pi (uses same GPIO pinout as Raspberry Pi)
+        if [ -f "$WAVESHARE_LIB_PATH/lib/waveshare_epd/epdconfig.py" ]; then
+            echo "Patching Waveshare library for Orange Pi support..."
+            python3 "$INSTALL_DIR/install/patch_waveshare_orangepi.py" "$WAVESHARE_LIB_PATH/lib/waveshare_epd/epdconfig.py"
+        fi
+
+        echo "✓ Configured to use local Waveshare library"
+    else
+        echo "Note: Pre-downloaded Waveshare library not found, will download from GitHub"
+    fi
 fi
 
 # Install Python dependencies with retry mechanism (for network issues)
 echo "Installing Python dependencies..."
 cd "$INSTALL_DIR"
-UV_CMD="sudo -u birdnetpi UV_HTTP_TIMEOUT=300 UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple /opt/uv/uv sync --locked --no-dev --quiet"
+UV_CMD="sudo -u birdnetpi UV_CACHE_DIR=$UV_CACHE_DIR UV_HTTP_TIMEOUT=300 UV_EXTRA_INDEX_URL=https://www.piwheels.org/simple /opt/uv/uv sync --locked --no-dev"
 if [ -n "$EPAPER_EXTRAS" ]; then
     UV_CMD="$UV_CMD $EPAPER_EXTRAS"
 fi
@@ -258,7 +446,7 @@ if [ "$TEST_EPAPER" = true ]; then
     echo "ePaper HAT Test Mode"
     echo "========================================"
     echo ""
-    "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/install/test_epaper.py"
+    "$INSTALL_DIR/.venv/bin/python" -B "$INSTALL_DIR/install/test_epaper.py"
     exit $?
 fi
 
@@ -267,4 +455,18 @@ fi
 # (uv sync ran as birdnetpi, but setup_app.py needs sudo for system operations)
 echo ""
 echo "Starting installation..."
+
+# Pass config values as environment variables if they were set
+export BIRDNETPI_OS_KEY="${os_key:-}"
+export BIRDNETPI_DEVICE_KEY="${device_key:-}"
+export BIRDNETPI_DEVICE_NAME="${device_name:-}"
+export BIRDNETPI_LATITUDE="${latitude:-}"
+export BIRDNETPI_LONGITUDE="${longitude:-}"
+export BIRDNETPI_TIMEZONE="${timezone:-}"
+export BIRDNETPI_LANGUAGE="${language:-}"
+
 "$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/install/setup_app.py"
+
+# Clean up uv cache from tmpfs to free RAM
+echo "Cleaning up temporary cache..."
+sudo rm -rf /dev/shm/uv-cache

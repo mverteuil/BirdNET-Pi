@@ -121,7 +121,7 @@ class EmbeddedSystemdStrategy(ServiceManagementStrategy):
         """Return the status of a specified system service."""
         try:
             result = subprocess.run(
-                ["systemctl", "is-active", service_name],
+                ["sudo", "systemctl", "is-active", service_name],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -180,7 +180,7 @@ class EmbeddedSystemdStrategy(ServiceManagementStrategy):
         try:
             # Get detailed service info using systemctl show
             result = subprocess.run(
-                ["systemctl", "show", service_name, "--no-pager"],
+                ["sudo", "systemctl", "show", service_name, "--no-pager"],
                 capture_output=True,
                 text=True,
                 check=False,

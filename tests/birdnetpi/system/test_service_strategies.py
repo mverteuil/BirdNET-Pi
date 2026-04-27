@@ -105,7 +105,7 @@ class TestEmbeddedSystemdStrategy:
 
         assert status == expected_status
         mock_run.assert_called_once_with(
-            ["systemctl", "is-active", "test_service"],
+            ["sudo", "systemctl", "is-active", "test_service"],
             capture_output=True,
             text=True,
             check=False,
@@ -166,6 +166,13 @@ class TestEmbeddedSystemdStrategy:
         assert details["pid"] == 1234
         assert details["uptime_seconds"] == 3600.0  # 1 hour difference
         assert details["sub_state"] == "running"
+
+        mock_run.assert_called_once_with(
+            ["sudo", "systemctl", "show", "test_service", "--no-pager"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
     @pytest.mark.parametrize(
         "stdout,expected_pid,expected_uptime",
