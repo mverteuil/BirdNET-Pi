@@ -149,7 +149,7 @@ wheels = [
 
 [[package]]
 name = "apprise"
-version = "1.2.1"
+version = "1.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -158,10 +158,11 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "requests-oauthlib" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d2/04/4285d864569dde4eece4b0e7bfa447a68e99240898537b10926cb5a53145/apprise-1.2.1.tar.gz", hash = "sha256:67e0c227eecee260000980dbbf8ba1e5eebdbe494f4730808297c9e645c03579", size = 1527155, upload-time = "2022-12-28T14:58:21.816Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2f/74/9c16829d3e7e45ce7daf1b704687fa4fde7ea00d72eafe8de18c72bf5995/apprise-1.10.0.tar.gz", hash = "sha256:b768f32d99e45ed5f4c3eef1f67903e803c97f97ba61a531a5d0a45d40df90a8", size = 2188611, upload-time = "2026-04-26T14:23:51.928Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/3a/52ec5cf9ed71e3a068a208603e38471b686a59b548dda771f2975166e4a9/apprise-1.2.1-py2.py3-none-any.whl", hash = "sha256:679fb5d6232ec7748eef308bda9fe0f0707fa5e48eab247bfde83c3a024a21d1", size = 1109380, upload-time = "2022-12-28T14:58:19.436Z" },
+    { url = "https://files.pythonhosted.org/packages/69/f9/177a73589d34e676d10bc4c6a8328710e28af5907234e9f25bb149a04eec/apprise-1.10.0-py3-none-any.whl", hash = "sha256:e685303d3568bb7a057d6ddeafd27ee12fff183ca36483ad4bacc0b9b4efa82c", size = 1632292, upload-time = "2026-04-26T14:23:49.28Z" },
 ]
 
 [[package]]
@@ -352,7 +353,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "alembic", specifier = ">=1.13.0" },
     { name = "altair", specifier = "<5" },
-    { name = "apprise", specifier = "==1.2.1" },
+    { name = "apprise", specifier = "==1.10.0" },
     { name = "astral" },
     { name = "babel", specifier = ">=2.14.0" },
     { name = "blinker", specifier = ">=1.9.0" },
