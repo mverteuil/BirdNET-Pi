@@ -66,7 +66,7 @@ dependencies = [
   "pandas",
   "passlib[argon2]>=1.7.4",
   "plotly",
-  "psutil>=7.0.0",
+  "psutil>=7.2.2",
   "pydub>=0.25.1",
   "python-multipart",
   "python-systemd>=0.0.9",
